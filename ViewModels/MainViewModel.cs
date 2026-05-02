@@ -305,20 +305,13 @@ namespace IglesiaAsistencia.ViewModels
         {
             if (_defaultCommitments.TryGetValue(CategoriaConfig.ToString(), out var days))
             {
-                _defDom = days[0];
-                _defLun = days[1];
-                _defMar = days[2];
-                _defMie = days[3];
-                _defJue = days[4];
-                _defVie = days[5];
-                _defSab = days[6];
-                OnPropertyChanged(nameof(DefDom));
-                OnPropertyChanged(nameof(DefLun));
-                OnPropertyChanged(nameof(DefMar));
-                OnPropertyChanged(nameof(DefMie));
-                OnPropertyChanged(nameof(DefJue));
-                OnPropertyChanged(nameof(DefVie));
-                OnPropertyChanged(nameof(DefSab));
+                DefDom = days[0];
+                DefLun = days[1];
+                DefMar = days[2];
+                DefMie = days[3];
+                DefJue = days[4];
+                DefVie = days[5];
+                DefSab = days[6];
             }
         }
 
