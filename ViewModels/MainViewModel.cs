@@ -110,6 +110,16 @@ namespace IglesiaAsistencia.ViewModels
         [ObservableProperty]
         private DateTime? _nuevaFechaBautismo;
 
+        partial void OnNuevaFechaAceptoCristoChanged(DateTime? value)
+        {
+            if (value.HasValue) NuevaAceptoCristo = true;
+        }
+
+        partial void OnNuevaFechaBautismoChanged(DateTime? value)
+        {
+            if (value.HasValue) NuevaEstaBautizado = true;
+        }
+
         [ObservableProperty]
         private bool _nuevaEstaBautizado;
         partial void OnNuevaEstaBautizadoChanged(bool value)
@@ -125,7 +135,7 @@ namespace IglesiaAsistencia.ViewModels
                     return;
                 }
 
-                if (NuevaCategoria == Categoria.Seguimiento)
+                if (NuevaCategoria == Categoria.Seguimiento || NuevaCategoria == Categoria.Visita)
                 {
                     NuevaCategoria = Categoria.Miembro;
                 }
@@ -467,7 +477,8 @@ namespace IglesiaAsistencia.ViewModels
             LimpiarFormulario();
         }
 
-        private void LimpiarFormulario()
+        [RelayCommand]
+        public void LimpiarFormulario()
         {
             NuevoNombre = string.Empty;
             NuevoTelefono = string.Empty;
@@ -509,15 +520,13 @@ namespace IglesiaAsistencia.ViewModels
                 PersonaSeleccionada.Telefono = NuevoTelefono;
                 PersonaSeleccionada.FechaNacimiento = NuevaCategoria == Categoria.Visita ? null : NuevaFechaNacimiento;
                 
-                // Si acepta a cristo ahora y antes no, guardar fecha
-                if (NuevaAceptoCristo && !PersonaSeleccionada.AceptoCristo)
-                    PersonaSeleccionada.FechaAceptoCristo = DateTime.Today;
-                PersonaSeleccionada.AceptoCristo = NuevaAceptoCristo;
+                // Actualizar Aceptó a Cristo: Priorizar fecha del DatePicker
+                PersonaSeleccionada.AceptoCristo = NuevaAceptoCristo || NuevaFechaAceptoCristo.HasValue;
+                PersonaSeleccionada.FechaAceptoCristo = NuevaFechaAceptoCristo ?? (PersonaSeleccionada.AceptoCristo ? (PersonaSeleccionada.FechaAceptoCristo ?? DateTime.Today) : null);
 
-                // Si se bautiza ahora y antes no, guardar fecha
-                if (NuevaEstaBautizado && !PersonaSeleccionada.EstaBautizado)
-                    PersonaSeleccionada.FechaBautismo = DateTime.Today;
-                PersonaSeleccionada.EstaBautizado = NuevaEstaBautizado;
+                // Actualizar Bautismo: Priorizar fecha del DatePicker
+                PersonaSeleccionada.EstaBautizado = NuevaEstaBautizado || NuevaFechaBautismo.HasValue;
+                PersonaSeleccionada.FechaBautismo = NuevaFechaBautismo ?? (PersonaSeleccionada.EstaBautizado ? (PersonaSeleccionada.FechaBautismo ?? DateTime.Today) : null);
 
                 PersonaSeleccionada.Categoria = NuevaCategoria;
                 PersonaSeleccionada.QuienLoInvito = NuevaCategoria == Categoria.Visita ? NuevaQuienLoInvito : null;
@@ -554,10 +563,10 @@ namespace IglesiaAsistencia.ViewModels
                     Telefono = NuevoTelefono,
                     FechaNacimiento = NuevaCategoria == Categoria.Visita ? null : NuevaFechaNacimiento,
                     Categoria = NuevaCategoria,
-                    AceptoCristo = NuevaAceptoCristo,
-                    FechaAceptoCristo = NuevaAceptoCristo ? DateTime.Today : null,
-                    EstaBautizado = NuevaEstaBautizado,
-                    FechaBautismo = NuevaEstaBautizado ? DateTime.Today : null,
+                    AceptoCristo = NuevaAceptoCristo || NuevaFechaAceptoCristo.HasValue,
+                    FechaAceptoCristo = NuevaFechaAceptoCristo ?? (NuevaAceptoCristo ? DateTime.Today : null),
+                    EstaBautizado = NuevaEstaBautizado || NuevaFechaBautismo.HasValue,
+                    FechaBautismo = NuevaFechaBautismo ?? (NuevaEstaBautizado ? DateTime.Today : null),
                     QuienLoInvito = NuevaCategoria == Categoria.Visita ? NuevaQuienLoInvito : null,
                     CompromisoLunes = NuevaCategoria != Categoria.Visita && NuevaCompromisoLunes,
                     CompromisoMartes = NuevaCategoria != Categoria.Visita && NuevaCompromisoMartes,
@@ -686,6 +695,55 @@ namespace IglesiaAsistencia.ViewModels
                     MessageBox.Show("El sistema ha sido reiniciado con éxito.");
                 }
             }
+        }
+
+        [RelayCommand]
+        private async Task SeedData()
+        {
+            string[] nombres = { "Juan", "María", "Pedro", "Ana", "Luis", "Elena", "Carlos", "Sofía", "José", "Laura", "Diego", "Carmen", "Miguel", "Lucía", "Javier", "Marta", "Raúl", "Isabel", "Jorge", "Paula" };
+            string[] apellidos = { "García", "Rodríguez", "González", "Fernández", "López", "Martínez", "Sánchez", "Pérez", "Gómez", "Martin", "Jiménez", "Ruiz", "Hernández", "Diaz", "Moreno", "Muñoz", "Álvarez", "Romero", "Alonso", "Gutiérrez" };
+            Random rnd = new Random();
+
+            for (int i = 0; i < 50; i++)
+            {
+                string nombre = nombres[rnd.Next(nombres.Length)];
+                string apellido = apellidos[rnd.Next(apellidos.Length)];
+                var persona = new Persona
+                {
+                    Nombre = $"{nombre} {apellido} {i + 1}",
+                    Telefono = $"809-{rnd.Next(100, 999)}-{rnd.Next(1000, 9999)}",
+                    Categoria = (Categoria)rnd.Next(0, 5),
+                    FechaNacimiento = DateTime.Today.AddYears(-rnd.Next(5, 80)).AddDays(rnd.Next(0, 365)),
+                    CompromisoDomingo = true,
+                    CompromisoMiercoles = rnd.Next(2) == 0,
+                    CompromisoViernes = rnd.Next(2) == 0,
+                    CompromisoSabado = rnd.Next(10) == 0
+                };
+
+                if (persona.Categoria != Categoria.Visita)
+                {
+                    persona.AceptoCristo = rnd.Next(2) == 0;
+                    if (persona.AceptoCristo)
+                    {
+                        persona.FechaAceptoCristo = DateTime.Today.AddMonths(-rnd.Next(1, 120));
+                        persona.EstaBautizado = rnd.Next(2) == 0;
+                        if (persona.EstaBautizado)
+                        {
+                            persona.FechaBautismo = persona.FechaAceptoCristo.Value.AddMonths(rnd.Next(1, 12));
+                        }
+                    }
+                }
+                else
+                {
+                    persona.QuienLoInvito = "Hermano de la iglesia";
+                }
+
+                _context.Personas.Add(persona);
+            }
+
+            await _context.SaveChangesAsync();
+            LoadData(); 
+            MessageBox.Show("Se han creado 50 registros de prueba.");
         }
 
         public void EjecutarBackupAutomatico()

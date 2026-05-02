@@ -14,7 +14,7 @@ namespace IglesiaAsistencia.Services
     {
         public void GenerarReporteDiarioDetallado(string filePath, DateTime fecha, List<Persona> asistentes, List<Persona> excusas, List<Persona> ausentes)
         {
-            QuestPDF.Settings.License = LicenseType.Community;
+           QuestPDF.Settings.License = LicenseType.Community;
             var cultura = new CultureInfo("es-ES");
             string rawFecha = fecha.ToString("dddd, dd 'de' MMMM 'de' yyyy", cultura);
             string fechaFormateada = char.ToUpper(rawFecha[0]) + rawFecha.Substring(1);
