@@ -138,51 +138,110 @@
                 </ScrollViewer>
 
                 <!-- VISTA: CONFIGURACION -->
-                <Border>
-                    <Border.Style>
-                        <Style TargetType="Border" BasedOn="{StaticResource PremiumCard}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding CurrentView}" Value="Configuracion"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style>
-                    </Border.Style>
-                    <StackPanel>
-                        <TextBlock Text="Configuración del Sistema" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
-                        
-                        <TextBlock Text="Ruta para Copias de Seguridad Automáticas" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                        <Border BorderBrush="#DDD" BorderThickness="1" CornerRadius="5" Padding="10" Background="#F9F9F9">
-                            <TextBlock Text="{Binding RutaBackupConfigurada}" Foreground="DimGray" TextWrapping="Wrap"/>
-                        </Border>
-                        
-                        <Button Style="{StaticResource PrimaryButton}" Content="Cambiar Carpeta de Backup" Command="{Binding SeleccionarRutaBackupCommand}" Margin="0,15,0,0" HorizontalAlignment="Left"/>
-                        
-                        <Separator Margin="0,40,0,20"/>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer.Style>
+                        <Style TargetType="ScrollViewer">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentView}" Value="Configuracion">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ScrollViewer.Style>
+                    
+                    <Border Style="{StaticResource PremiumCard}" Margin="0,0,0,10">
+                        <StackPanel Margin="10">
+                            <TextBlock Text="Configuración General" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
 
-                        <TextBlock Text="Mantenimiento del Sistema" FontSize="16" FontWeight="Bold" Foreground="Red" Margin="0,0,0,10"/>
-                        <TextBlock Text="Estas acciones pueden modificar o borrar datos permanentemente." Foreground="Gray" Margin="0,0,0,15"/>
-                        
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                            <Button Content="REINICIAR TODO EL SISTEMA" Background="#FF5252" Foreground="White" 
-                                    Command="{Binding ResetearSistemaCommand}" Padding="20,10" FontWeight="Bold"
-                                    HorizontalAlignment="Left" BorderThickness="0" Margin="0,0,20,0">
-                                <Button.Resources>
-                                    <Style TargetType="Border">
-                                        <Setter Property="CornerRadius" Value="8"/>
-                                    </Style>
-                                </Button.Resources>
-                            </Button>
+                            <Grid Margin="0,0,0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,15,0">
+                                    <TextBlock Text="Nombre de la Iglesia" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding NombreIglesia, UpdateSourceTrigger=PropertyChanged}" Padding="10"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Bottom">
+                                    <TextBlock Text="Imagen Corporativa" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                    <Button Content="📁 SUBIR LOGO" Command="{Binding SeleccionarLogoCommand}" 
+                                            Background="Indigo" Foreground="White" Padding="15,10" FontWeight="Bold" BorderThickness="0">
+                                        <Button.Resources>
+                                            <Style TargetType="Border">
+                                                <Setter Property="CornerRadius" Value="5"/>
+                                            </Style>
+                                        </Button.Resources>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Text="💡 Recomendado: Logo cuadrado (1:1) o rectangular (4:3) de al menos 300x300px." 
+                                       FontStyle="Italic" Foreground="Gray" FontSize="11" Margin="0,0,0,20"/>
 
-                            <Button Content="⚡ GENERAR 50 REGISTROS DE PRUEBA" Background="Orange" Foreground="White" 
-                                    Command="{Binding SeedDataCommand}" Padding="20,10" FontWeight="Bold"
-                                    HorizontalAlignment="Left" BorderThickness="0">
-                                <Button.Resources>
-                                    <Style TargetType="Border">
-                                        <Setter Property="CornerRadius" Value="8"/>
-                                    </Style>
-                                </Button.Resources>
-                            </Button>
+                            <TextBlock Text="Reglas de Compromiso por Defecto" FontSize="14" FontWeight="SemiBold" Margin="0,10,0,10"/>
+                            <Border Background="#F9F9F9" Padding="15" CornerRadius="8" Margin="0,0,0,20" BorderBrush="#EEE" BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock Text="Seleccionar categoría para definir días de asistencia obligatorios:" Margin="0,0,0,10" FontSize="12" Foreground="#555"/>
+                                    <ComboBox SelectedItem="{Binding CategoriaConfig}" Margin="0,0,0,15" Padding="10">
+                                        <models:Categoria>Pastor</models:Categoria>
+                                        <models:Categoria>Diacono</models:Categoria>
+                                        <models:Categoria>Miembro</models:Categoria>
+                                        <models:Categoria>Seguimiento</models:Categoria>
+                                    </ComboBox>
+                                    
+                                    <TextBlock Text="Días marcados automáticamente al registrar:" Margin="0,0,0,10" FontSize="12" FontWeight="SemiBold"/>
+                                    <WrapPanel Margin="0,0,0,15">
+                                        <CheckBox Content="Dom" IsChecked="{Binding DefDom}" Margin="0,0,20,8"/>
+                                        <CheckBox Content="Lun" IsChecked="{Binding DefLun}" Margin="0,0,20,8"/>
+                                        <CheckBox Content="Mar" IsChecked="{Binding DefMar}" Margin="0,0,20,8"/>
+                                        <CheckBox Content="Mie" IsChecked="{Binding DefMie}" Margin="0,0,20,8"/>
+                                        <CheckBox Content="Jue" IsChecked="{Binding DefJue}" Margin="0,0,20,8"/>
+                                        <CheckBox Content="Vie" IsChecked="{Binding DefVie}" Margin="0,0,20,8"/>
+                                        <CheckBox Content="Sab" IsChecked="{Binding DefSab}" Margin="0,0,20,8"/>
+                                    </WrapPanel>
+                                    
+                                    <Button Content="GUARDAR REGLA" Command="{Binding GuardarDiasDefaultCommand}" 
+                                            Background="#3F51B5" Foreground="White" Padding="25,12" FontWeight="Bold" BorderThickness="0" HorizontalAlignment="Left">
+                                        <Button.Resources>
+                                            <Style TargetType="Border">
+                                                <Setter Property="CornerRadius" Value="8"/>
+                                            </Style>
+                                        </Button.Resources>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Text="Rutas de Almacenamiento" FontSize="16" FontWeight="Bold" Margin="0,10,0,15"/>
+                            
+                            <TextBlock Text="Carpeta de Reportes PDF" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                            <Grid Margin="0,0,0,15">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <TextBox Text="{Binding RutaReportesConfigurada}" Padding="10" IsReadOnly="True" Background="#F0F0F0" BorderThickness="1,1,0,1"/>
+                                <Button Grid.Column="1" Content="CAMBIAR" Command="{Binding SeleccionarRutaReportesCommand}" Padding="15,5" Background="#3F51B5" Foreground="White" BorderThickness="0"/>
+                            </Grid>
+
+                            <TextBlock Text="Carpeta de Backups Automáticos" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <TextBox Text="{Binding RutaBackupConfigurada}" Padding="10" IsReadOnly="True" Background="#F0F0F0" BorderThickness="1,1,0,1"/>
+                                <Button Grid.Column="1" Content="CAMBIAR" Command="{Binding SeleccionarRutaBackupCommand}" Padding="15,5" Background="#757575" Foreground="White" BorderThickness="0"/>
+                            </Grid>
+                            
+                            <Separator Margin="0,30,0,20"/>
+
+                            <TextBlock Text="Mantenimiento Crítico" FontSize="14" FontWeight="Bold" Foreground="#D32F2F" Margin="0,0,0,10"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                                <Button Content="🗑️ REINICIAR TODO EL SISTEMA (VACIAR BD)" Command="{Binding ResetearSistemaCommand}" 
+                                        Background="#FF5252" Foreground="White" Padding="30,12" FontWeight="Bold" BorderThickness="0" Margin="0,0,15,0">
+                                    <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources>
+                                </Button>
+                            </StackPanel>
+                            
+                            <TextBlock Text="Nota: El sistema realiza un backup automático cada vez que se cierra la aplicación." 
+                                       FontStyle="Italic" Foreground="Gray" FontSize="11" Margin="0,10,0,0"/>
                         </StackPanel>
-
-                        <TextBlock Text="Nota: El programa realizará un backup automático en esta ruta cada vez que se cierre la aplicación." 
-                                   FontStyle="Italic" Foreground="Gray" Margin="0,30,0,0"/>
-                    </StackPanel>
-                </Border>
+                    </Border>
+                </ScrollViewer>
 
                 <!-- VISTA: DIRECTORIO -->
                 <Grid>

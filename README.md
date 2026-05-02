@@ -16,12 +16,12 @@ Sistema profesional de escritorio desarrollado en **C# con WPF (.NET 8)** bajo e
 
 ### 📄 Reportes y Comunicación
 - **Reportes PDF Profesionales:** Generación de documentos detallados utilizando **QuestPDF**, incluyendo logotipos institucionales y estadísticas por rango de fecha.
+- **Rutas Personalizables:** Permite configurar carpetas independientes para guardar reportes y copias de seguridad.
 - **Integración con WhatsApp:** Envío de resúmenes de asistencia automáticos con un solo clic.
-- **Exportación de Datos:** Capacidad de exportar reportes semanales, mensuales o históricos.
 
 ### 🛠️ Herramientas de Mantenimiento
-- **Generador de Datos (Seed):** Herramienta integrada para generar registros de prueba y validar el comportamiento del sistema a gran escala.
 - **Backups Automáticos:** El sistema realiza copias de seguridad de la base de datos local cada vez que se cierra la aplicación.
+- **Reinicio de Sistema:** Opción para vaciar la base de datos y comenzar de cero (ideal para despliegue inicial).
 
 ## 🏗️ Arquitectura Técnica
 - **Framework:** .NET 8.0 (Windows)

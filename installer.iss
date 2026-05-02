@@ -1,6 +1,6 @@
-#define MyAppName "Asistencia Pro"
-#define MyAppVersion "1.1"
-#define MyAppPublisher "Comunidad del Reino"
+#define MyAppName "Iglesia Asistencia"
+#define MyAppVersion "1.0.0"
+#define MyAppPublisher "Iglesia Asistencia"
 #define MyAppExeName "IglesiaAsistencia.exe"
 
 [Setup]
@@ -12,7 +12,7 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 OutputDir=InstallerOutput
-OutputBaseFilename=AsistenciaPro_Setup
+OutputBaseFilename=IglesiaAsistencia_Setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -24,9 +24,8 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-; Asegúrate de ejecutar 'dotnet publish' antes de compilar este script
+; Asegúrate de ejecutar 'dotnet publish -c Release -r win-x64 --self-contained' antes de compilar este script
 Source: "bin\Release\net8.0-windows\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; NOTA: Si usas una ruta diferente para el publish, cámbiala aquí arriba.
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -36,4 +35,5 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
+; Limpiar carpetas de configuración y base de datos al desinstalar
 Type: filesandordirs; Name: "{localappdata}\IglesiaAsistencia"

@@ -12,13 +12,14 @@ namespace IglesiaAsistencia.Services
 {
     public class PdfService
     {
-        public void GenerarReporteDiarioDetallado(string filePath, DateTime fecha, List<Persona> asistentes, List<Persona> excusas, List<Persona> ausentes)
+        public void GenerarReporteDiarioDetallado(string filePath, DateTime fecha, List<Persona> asistentes, List<Persona> excusas, List<Persona> ausentes, string nombreIglesia, string? logoPath)
         {
            QuestPDF.Settings.License = LicenseType.Community;
             var cultura = new CultureInfo("es-ES");
             string rawFecha = fecha.ToString("dddd, dd 'de' MMMM 'de' yyyy", cultura);
             string fechaFormateada = char.ToUpper(rawFecha[0]) + rawFecha.Substring(1);
-            string logoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "logo_iglesia.jpeg");
+            // Si no se provee logoPath, buscar el default
+            logoPath ??= Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "logo_iglesia.jpeg");
 
             Document.Create(container =>
             {
@@ -33,8 +34,9 @@ namespace IglesiaAsistencia.Services
                     {
                         row.RelativeItem().Column(col =>
                         {
+                            col.Item().Text(nombreIglesia.ToUpper()).FontSize(14).SemiBold().FontColor(Colors.Grey.Medium);
                             col.Item().Text("REPORTE DIARIO DE ASISTENCIA").FontSize(24).ExtraBold().FontColor(Colors.Indigo.Medium);
-                            col.Item().Text(fechaFormateada.ToUpper()).FontSize(12).SemiBold().FontColor(Colors.Grey.Medium);
+                            col.Item().Text(fechaFormateada.ToUpper()).FontSize(10).SemiBold().FontColor(Colors.Grey.Medium);
                         });
 
                         if (File.Exists(logoPath))
@@ -260,11 +262,11 @@ namespace IglesiaAsistencia.Services
             .GeneratePdf(filePath);
         }
 
-        public void GenerarReporteDetallado(string filePath, string titulo, DateTime inicio, DateTime fin, List<PersonaReporteDto> datos)
+        public void GenerarReporteDetallado(string filePath, string titulo, DateTime inicio, DateTime fin, List<PersonaReporteDto> datos, string nombreIglesia, string? logoPath)
         {
             QuestPDF.Settings.License = LicenseType.Community;
             var cultura = new CultureInfo("es-ES");
-            string logoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "logo_iglesia.jpeg");
+            logoPath ??= Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "logo_iglesia.jpeg");
 
             Document.Create(container =>
             {
@@ -273,18 +275,19 @@ namespace IglesiaAsistencia.Services
                     page.Size(PageSizes.A4);
                     page.Margin(1, Unit.Centimetre);
                     page.PageColor(Colors.White);
-                    page.DefaultTextStyle(x => x.FontSize(10).FontFamily(Fonts.Verdana));
+                    page.DefaultTextStyle(x => x.FontSize(9).FontFamily(Fonts.Verdana));
 
                     page.Header().Row(row =>
                     {
                         row.RelativeItem().Column(col =>
                         {
-                            col.Item().Text(titulo).FontSize(22).SemiBold().FontColor(Colors.Indigo.Medium);
-                            col.Item().Text($"Periodo: {inicio:dd/MM/yyyy} al {fin:dd/MM/yyyy}").FontSize(12).Italic();
+                            col.Item().Text(nombreIglesia.ToUpper()).FontSize(14).SemiBold().FontColor(Colors.Grey.Medium);
+                            col.Item().Text(titulo.ToUpper()).FontSize(22).ExtraBold().FontColor(Colors.Indigo.Medium);
+                            col.Item().Text($"{inicio:dd/MM/yyyy} - {fin:dd/MM/yyyy}").FontSize(10).SemiBold().FontColor(Colors.Grey.Medium);
                         });
 
                         if (File.Exists(logoPath))
-                            row.ConstantItem(100).Image(logoPath);
+                            row.ConstantItem(80).Image(logoPath);
                     });
 
                     page.Content().PaddingVertical(15).Column(x =>

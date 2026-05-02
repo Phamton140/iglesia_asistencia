@@ -50,8 +50,31 @@ namespace IglesiaAsistencia.ViewModels
         // Propiedades para Nueva/Editar Persona
         [ObservableProperty]
         private string _nuevoNombre = string.Empty;
+        partial void OnNuevoNombreChanged(string value)
+        {
+            if (value != null && value != value.ToUpper())
+            {
+                NuevoNombre = value.ToUpper();
+            }
+        }
         [ObservableProperty]
         private string _nuevoTelefono = string.Empty;
+        partial void OnNuevoTelefonoChanged(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return;
+            var digitsOnly = new string(value.Where(char.IsDigit).ToArray());
+            if (digitsOnly.Length > 10) digitsOnly = digitsOnly.Substring(0, 10);
+            string formatted = digitsOnly;
+            if (digitsOnly.Length > 3 && digitsOnly.Length <= 6)
+                formatted = $"{digitsOnly.Substring(0, 3)}-{digitsOnly.Substring(3)}";
+            else if (digitsOnly.Length > 6)
+                formatted = $"{digitsOnly.Substring(0, 3)}-{digitsOnly.Substring(3, 3)}-{digitsOnly.Substring(6)}";
+
+            if (value != formatted)
+            {
+                NuevoTelefono = formatted;
+            }
+        }
         [ObservableProperty]
         private DateTime? _nuevaFechaNacimiento = null;
         [ObservableProperty]
@@ -70,6 +93,30 @@ namespace IglesiaAsistencia.ViewModels
 
         [ObservableProperty]
         private string _rutaBackupConfigurada = string.Empty;
+
+        [ObservableProperty]
+        private string _rutaReportesConfigurada = string.Empty;
+
+        [ObservableProperty]
+        private string _nombreIglesia = "Comunidad Del Reino";
+        partial void OnNombreIglesiaChanged(string value) => GuardarConfiguracion();
+
+        [ObservableProperty]
+        private string? _logoPath;
+
+        [ObservableProperty]
+        private Categoria _categoriaConfig = Categoria.Miembro;
+        partial void OnCategoriaConfigChanged(Categoria value) => CargarDiasDefault();
+
+        [ObservableProperty] private bool _defDom;
+        [ObservableProperty] private bool _defLun;
+        [ObservableProperty] private bool _defMar;
+        [ObservableProperty] private bool _defMie;
+        [ObservableProperty] private bool _defJue;
+        [ObservableProperty] private bool _defVie;
+        [ObservableProperty] private bool _defSab;
+
+        private Dictionary<string, bool[]> _defaultCommitments = new();
 
         [ObservableProperty]
         private string _nuevaQuienLoInvito = string.Empty;
@@ -139,6 +186,21 @@ namespace IglesiaAsistencia.ViewModels
                 {
                     NuevaCategoria = Categoria.Miembro;
                 }
+            }
+        }
+
+        partial void OnNuevaCategoriaChanged(Categoria value)
+        {
+            // Solo aplicar defaults si NO estamos en modo edición (nuevo registro)
+            if (!EsModoEdicion && _defaultCommitments.TryGetValue(value.ToString(), out var days))
+            {
+                NuevaCompromisoDomingo = days[0];
+                NuevaCompromisoLunes = days[1];
+                NuevaCompromisoMartes = days[2];
+                NuevaCompromisoMiercoles = days[3];
+                NuevaCompromisoJueves = days[4];
+                NuevaCompromisoViernes = days[5];
+                NuevaCompromisoSabado = days[6];
             }
         }
 
@@ -217,17 +279,67 @@ namespace IglesiaAsistencia.ViewModels
 
         private void CargarConfiguracion()
         {
-            string path = AppConfig.ConfigPath;
-            if (File.Exists(path))
-            {
-                RutaBackupConfigurada = File.ReadAllText(path);
-            }
+            var config = AppConfig.Load();
+            RutaBackupConfigurada = config.RutaBackup;
+            RutaReportesConfigurada = config.RutaReportes;
+            NombreIglesia = config.NombreIglesia;
+            LogoPath = config.LogoPath;
+            _defaultCommitments = config.DefaultCommitments;
+            CargarDiasDefault();
         }
 
         private void GuardarConfiguracion()
         {
-            string path = AppConfig.ConfigPath;
-            File.WriteAllText(path, RutaBackupConfigurada);
+            var config = new ConfigData
+            {
+                RutaBackup = RutaBackupConfigurada,
+                RutaReportes = RutaReportesConfigurada,
+                NombreIglesia = NombreIglesia,
+                LogoPath = LogoPath,
+                DefaultCommitments = _defaultCommitments
+            };
+            AppConfig.Save(config);
+        }
+
+        private void CargarDiasDefault()
+        {
+            if (_defaultCommitments.TryGetValue(CategoriaConfig.ToString(), out var days))
+            {
+                _defDom = days[0];
+                _defLun = days[1];
+                _defMar = days[2];
+                _defMie = days[3];
+                _defJue = days[4];
+                _defVie = days[5];
+                _defSab = days[6];
+                OnPropertyChanged(nameof(DefDom));
+                OnPropertyChanged(nameof(DefLun));
+                OnPropertyChanged(nameof(DefMar));
+                OnPropertyChanged(nameof(DefMie));
+                OnPropertyChanged(nameof(DefJue));
+                OnPropertyChanged(nameof(DefVie));
+                OnPropertyChanged(nameof(DefSab));
+            }
+        }
+
+        [RelayCommand]
+        private void GuardarDiasDefault()
+        {
+            _defaultCommitments[CategoriaConfig.ToString()] = new[] { DefDom, DefLun, DefMar, DefMie, DefJue, DefVie, DefSab };
+            GuardarConfiguracion();
+            MessageBox.Show($"Configuración para {CategoriaConfig} guardada.");
+        }
+
+        [RelayCommand]
+        private void SeleccionarLogo()
+        {
+            var ofd = new OpenFileDialog { Filter = "Imágenes|*.jpg;*.jpeg;*.png;*.bmp" };
+            if (ofd.ShowDialog() == true)
+            {
+                LogoPath = ofd.FileName;
+                GuardarConfiguracion();
+                MessageBox.Show("Logo cargado correctamente. Se utilizará en todos los reportes PDF generados a partir de ahora.", "Logo Actualizado", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
 
         public async void LoadData()
@@ -697,54 +809,6 @@ namespace IglesiaAsistencia.ViewModels
             }
         }
 
-        [RelayCommand]
-        private async Task SeedData()
-        {
-            string[] nombres = { "Juan", "María", "Pedro", "Ana", "Luis", "Elena", "Carlos", "Sofía", "José", "Laura", "Diego", "Carmen", "Miguel", "Lucía", "Javier", "Marta", "Raúl", "Isabel", "Jorge", "Paula" };
-            string[] apellidos = { "García", "Rodríguez", "González", "Fernández", "López", "Martínez", "Sánchez", "Pérez", "Gómez", "Martin", "Jiménez", "Ruiz", "Hernández", "Diaz", "Moreno", "Muñoz", "Álvarez", "Romero", "Alonso", "Gutiérrez" };
-            Random rnd = new Random();
-
-            for (int i = 0; i < 50; i++)
-            {
-                string nombre = nombres[rnd.Next(nombres.Length)];
-                string apellido = apellidos[rnd.Next(apellidos.Length)];
-                var persona = new Persona
-                {
-                    Nombre = $"{nombre} {apellido} {i + 1}",
-                    Telefono = $"809-{rnd.Next(100, 999)}-{rnd.Next(1000, 9999)}",
-                    Categoria = (Categoria)rnd.Next(0, 5),
-                    FechaNacimiento = DateTime.Today.AddYears(-rnd.Next(5, 80)).AddDays(rnd.Next(0, 365)),
-                    CompromisoDomingo = true,
-                    CompromisoMiercoles = rnd.Next(2) == 0,
-                    CompromisoViernes = rnd.Next(2) == 0,
-                    CompromisoSabado = rnd.Next(10) == 0
-                };
-
-                if (persona.Categoria != Categoria.Visita)
-                {
-                    persona.AceptoCristo = rnd.Next(2) == 0;
-                    if (persona.AceptoCristo)
-                    {
-                        persona.FechaAceptoCristo = DateTime.Today.AddMonths(-rnd.Next(1, 120));
-                        persona.EstaBautizado = rnd.Next(2) == 0;
-                        if (persona.EstaBautizado)
-                        {
-                            persona.FechaBautismo = persona.FechaAceptoCristo.Value.AddMonths(rnd.Next(1, 12));
-                        }
-                    }
-                }
-                else
-                {
-                    persona.QuienLoInvito = "Hermano de la iglesia";
-                }
-
-                _context.Personas.Add(persona);
-            }
-
-            await _context.SaveChangesAsync();
-            LoadData(); 
-            MessageBox.Show("Se han creado 50 registros de prueba.");
-        }
 
         public void EjecutarBackupAutomatico()
         {
@@ -795,7 +859,8 @@ namespace IglesiaAsistencia.ViewModels
             var sfd = new SaveFileDialog
             {
                 Filter = "PDF Files (*.pdf)|*.pdf",
-                FileName = $"Reporte_{FechaSeleccionada:yyyy-MM-dd}.pdf"
+                FileName = $"Reporte_{FechaSeleccionada:yyyy-MM-dd}.pdf",
+                InitialDirectory = string.IsNullOrWhiteSpace(RutaReportesConfigurada) ? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) : RutaReportesConfigurada
             };
 
             if (sfd.ShowDialog() == true)
@@ -806,7 +871,7 @@ namespace IglesiaAsistencia.ViewModels
                     var excusas = Personas.Where(p => p.IsExcusa).ToList();
                     var ausentes = AsistenciaFiltrada.Where(p => !p.IsPresente && !p.IsExcusa && p.Categoria != Categoria.Visita).ToList();
 
-                    _pdfService.GenerarReporteDiarioDetallado(sfd.FileName, FechaSeleccionada, asistentes, excusas, ausentes);
+                    _pdfService.GenerarReporteDiarioDetallado(sfd.FileName, FechaSeleccionada, asistentes, excusas, ausentes, NombreIglesia, LogoPath);
                     MessageBox.Show("Reporte PDF generado con éxito.", "Éxito", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 catch (Exception ex)
@@ -830,6 +895,23 @@ namespace IglesiaAsistencia.ViewModels
                 RutaBackupConfigurada = dialog.FolderName;
                 GuardarConfiguracion();
                 MessageBox.Show("Carpeta de backup configurada con éxito.");
+            }
+        }
+
+        [RelayCommand]
+        private void SeleccionarRutaReportes()
+        {
+            var dialog = new Microsoft.Win32.OpenFolderDialog
+            {
+                Title = "Seleccione la carpeta para guardar los Reportes PDF",
+                InitialDirectory = string.IsNullOrWhiteSpace(RutaReportesConfigurada) ? AppDomain.CurrentDomain.BaseDirectory : RutaReportesConfigurada
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                RutaReportesConfigurada = dialog.FolderName;
+                GuardarConfiguracion();
+                MessageBox.Show("Carpeta de reportes configurada con éxito.");
             }
         }
 
@@ -880,7 +962,8 @@ namespace IglesiaAsistencia.ViewModels
             var sfd = new Microsoft.Win32.SaveFileDialog 
             { 
                 Filter = "PDF|*.pdf", 
-                FileName = $"Reporte_{rango}_{inicio:yyyyMMdd}.pdf" 
+                FileName = $"Reporte_{rango}_{inicio:yyyyMMdd}.pdf",
+                InitialDirectory = string.IsNullOrWhiteSpace(RutaReportesConfigurada) ? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) : RutaReportesConfigurada
             };
 
             if (sfd.ShowDialog() == true)
@@ -939,7 +1022,7 @@ namespace IglesiaAsistencia.ViewModels
                     .Where(d => d.AsistenciasRealizadas > 0 || d.Categoria != Categoria.Visita)
                     .ToList();
 
-                    _pdfService.GenerarReporteDetallado(sfd.FileName, $"Reporte de Asistencia ({rango})", inicio, fin, datosReporte);
+                    _pdfService.GenerarReporteDetallado(sfd.FileName, $"Reporte de Asistencia ({rango})", inicio, fin, datosReporte, NombreIglesia, LogoPath);
                     MessageBox.Show($"Reporte {rango} generado con éxito.");
                 }
                 catch (Exception ex)
@@ -955,7 +1038,8 @@ namespace IglesiaAsistencia.ViewModels
             var sfd = new Microsoft.Win32.SaveFileDialog 
             { 
                 Filter = "PDF|*.pdf", 
-                FileName = $"Reporte_Domingos_{DateTime.Now:yyyyMM}.pdf" 
+                FileName = $"Reporte_Domingos_{DateTime.Now:yyyyMM}.pdf",
+                InitialDirectory = string.IsNullOrWhiteSpace(RutaReportesConfigurada) ? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) : RutaReportesConfigurada
             };
 
             if (sfd.ShowDialog() == true)
@@ -991,7 +1075,7 @@ namespace IglesiaAsistencia.ViewModels
                     var primerDomingo = asistenciasDomingo.Min(a => a.Fecha);
                     var ultimoDomingo = asistenciasDomingo.Max(a => a.Fecha);
 
-                    _pdfService.GenerarReporteDetallado(sfd.FileName, "Reporte Histórico de Domingos", primerDomingo, ultimoDomingo, datosReporte);
+                    _pdfService.GenerarReporteDetallado(sfd.FileName, "Reporte Histórico de Domingos", primerDomingo, ultimoDomingo, datosReporte, NombreIglesia, LogoPath);
                     MessageBox.Show("Reporte de Domingos generado con éxito.");
                 }
                 catch (Exception ex)
