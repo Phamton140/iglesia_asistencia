@@ -19,8 +19,8 @@ namespace IglesiaAsistencia.Services
             sb.AppendLine($"Pastores: {asistentes.Count(a => a.Categoria == Categoria.Pastor)}");
             sb.AppendLine($"Diáconos: {asistentes.Count(a => a.Categoria == Categoria.Diacono)}");
             sb.AppendLine($"Miembros: {asistentes.Count(a => a.Categoria == Categoria.Miembro)}");
-            sb.AppendLine($"Adolescentes: {asistentes.Count(a => a.Categoria == Categoria.Adolescente)}");
-            sb.AppendLine($"Invitados: {asistentes.Count(a => a.Categoria == Categoria.Invitado)}");
+            sb.AppendLine($"En Seguimiento: {asistentes.Count(a => a.Categoria == Categoria.Seguimiento)}");
+            sb.AppendLine($"Visitas: {asistentes.Count(a => a.Categoria == Categoria.Visita)}");
             sb.AppendLine();
 
             if (cumpleañeros.Any())
@@ -34,25 +34,16 @@ namespace IglesiaAsistencia.Services
                 sb.AppendLine();
             }
 
-            var invitados = asistentes.Where(a => a.Categoria == Categoria.Invitado).ToList();
-            if (invitados.Any())
+            var visitas = asistentes.Where(a => a.Categoria == Categoria.Visita).ToList();
+            if (visitas.Any())
             {
-                sb.AppendLine("👋 Invitados:");
-                sb.AppendLine();
+                sb.AppendLine("👋 Nuestras Visitas:");
                 
-                var nuevos = invitados.Where(i => i.ContadorVisitas <= 1).ToList();
-                if (nuevos.Any())
+                foreach (var v in visitas)
                 {
-                    sb.AppendLine("🆕 Nuevos:");
-                    foreach (var n in nuevos) sb.AppendLine($"- {n.Nombre}");
-                }
-
-                var recurrentes = invitados.Where(i => i.ContadorVisitas > 1).ToList();
-                if (recurrentes.Any())
-                {
-                    sb.AppendLine();
-                    sb.AppendLine("🔁 Recurrentes:");
-                    foreach (var r in recurrentes) sb.AppendLine($"- {r.Nombre} ({r.ContadorVisitas} visitas)");
+                    string infoInvito = !string.IsNullOrEmpty(v.QuienLoInvito) ? $" (Inv. por: {v.QuienLoInvito})" : "";
+                    string status = v.ContadorVisitas <= 1 ? "🆕" : "🔁";
+                    sb.AppendLine($"{status} {v.Nombre} ({v.ContadorVisitas}){infoInvito}");
                 }
             }
 

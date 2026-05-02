@@ -59,19 +59,150 @@ namespace IglesiaAsistencia.ViewModels
         [ObservableProperty]
         private bool _esModoEdicion = false;
 
+        // Propiedades de compromiso para nueva/editar persona
+        [ObservableProperty] private bool _nuevaCompromisoLunes;
+        [ObservableProperty] private bool _nuevaCompromisoMartes;
+        [ObservableProperty] private bool _nuevaCompromisoMiercoles;
+        [ObservableProperty] private bool _nuevaCompromisoJueves;
+        [ObservableProperty] private bool _nuevaCompromisoViernes;
+        [ObservableProperty] private bool _nuevaCompromisoSabado;
+        [ObservableProperty] private bool _nuevaCompromisoDomingo = true;
+
         [ObservableProperty]
         private string _rutaBackupConfigurada = string.Empty;
+
+        [ObservableProperty]
+        private string _nuevaQuienLoInvito = string.Empty;
+
+        [ObservableProperty]
+        private bool _visitoHoy = false;
+
+        [ObservableProperty]
+        private DateTime? _nuevaFechaAceptoCristo;
+
+        [ObservableProperty]
+        private bool _nuevaAceptoCristo;
+        partial void OnNuevaAceptoCristoChanged(bool value)
+        {
+            if (value && NuevaCategoria == Categoria.Visita)
+            {
+                NuevaCategoria = Categoria.Seguimiento;
+                // Al pasar a seguimiento, la fecha de nacimiento debe estar vacía para que la elijan
+                NuevaFechaNacimiento = null;
+
+                // Si estamos editando, guardar inmediatamente en BD
+                if (EsModoEdicion && PersonaSeleccionada != null)
+                {
+                    PersonaSeleccionada.Categoria = Categoria.Seguimiento;
+                    PersonaSeleccionada.AceptoCristo = true;
+                    if (!PersonaSeleccionada.FechaAceptoCristo.HasValue)
+                        PersonaSeleccionada.FechaAceptoCristo = DateTime.Today;
+                    PersonaSeleccionada.FechaNacimiento = null;
+
+                    _context.Entry(PersonaSeleccionada).State = EntityState.Modified;
+                    _ = _context.SaveChangesAsync();
+
+                    FiltrarListas();
+                }
+            }
+        }
+
+        [ObservableProperty]
+        private DateTime? _nuevaFechaBautismo;
+
+        [ObservableProperty]
+        private bool _nuevaEstaBautizado;
+        partial void OnNuevaEstaBautizadoChanged(bool value)
+        {
+            if (value)
+            {
+                if (!NuevaFechaNacimiento.HasValue)
+                {
+                    MessageBox.Show("Para marcar un bautismo es obligatorio ingresar la fecha de nacimiento primero.", "Requisito faltante", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    
+                    // Usar Dispatcher para revertir el check sin causar conflictos de concurrencia en la UI
+                    Application.Current.Dispatcher.InvokeAsync(() => NuevaEstaBautizado = false);
+                    return;
+                }
+
+                if (NuevaCategoria == Categoria.Seguimiento)
+                {
+                    NuevaCategoria = Categoria.Miembro;
+                }
+            }
+        }
 
         public MainViewModel()
         {
             _context = new AppDbContext();
             _context.Database.EnsureCreated();
+            EjecutarMigraciones();
+
             _waService = new WhatsAppService();
             _pdfService = new PdfService();
             _backupService = new BackupService();
             
             CargarConfiguracion();
             LoadData();
+        }
+
+        private void EjecutarMigraciones()
+        {
+            // Crear tabla de control para que cada migración solo corra UNA vez
+            _context.Database.ExecuteSqlRaw(@"
+                CREATE TABLE IF NOT EXISTS __Migraciones (
+                    Id TEXT PRIMARY KEY,
+                    Fecha TEXT
+                );");
+
+            void Migrar(string id, Action accion)
+            {
+                var count = _context.Database
+                    .SqlQueryRaw<int>($"SELECT COUNT(*) AS Value FROM __Migraciones WHERE Id = '{id}'")
+                    .First();
+                if (count == 0)
+                {
+                    try { accion(); } catch { }
+                    _context.Database.ExecuteSqlRaw(
+                        $"INSERT INTO __Migraciones(Id, Fecha) VALUES('{id}', '{DateTime.Now:yyyy-MM-dd HH:mm:ss}')");
+                }
+            }
+
+            // Columnas nuevas (seguras de repetir, pero las controlamos igual)
+            Migrar("col_QuienLoInvito", () => _context.Database.ExecuteSqlRaw("ALTER TABLE Personas ADD COLUMN QuienLoInvito TEXT;"));
+            Migrar("col_AceptoCristo", () => _context.Database.ExecuteSqlRaw("ALTER TABLE Personas ADD COLUMN AceptoCristo INTEGER DEFAULT 0;"));
+            Migrar("col_FechaAceptoCristo", () => _context.Database.ExecuteSqlRaw("ALTER TABLE Personas ADD COLUMN FechaAceptoCristo TEXT;"));
+            Migrar("col_EstaBautizado", () => _context.Database.ExecuteSqlRaw("ALTER TABLE Personas ADD COLUMN EstaBautizado INTEGER DEFAULT 0;"));
+            Migrar("col_FechaBautismo", () => _context.Database.ExecuteSqlRaw("ALTER TABLE Personas ADD COLUMN FechaBautismo TEXT;"));
+
+            // Migración del enum shift al eliminar Adolescente
+            // Antes: Pastor=0, Diacono=1, Miembro=2, Adolescente=3, Visita=4, Seguimiento=5
+            // Ahora: Pastor=0, Diacono=1, Miembro=2, Visita=3, Seguimiento=4
+            Migrar("enum_shift_v1", () =>
+            {
+                _context.Database.ExecuteSqlRaw("UPDATE Personas SET Categoria = 99 WHERE Categoria = 5;"); // viejo Seguimiento → temp
+                _context.Database.ExecuteSqlRaw("UPDATE Personas SET Categoria = 3 WHERE Categoria = 4;");  // viejo Visita → nuevo Visita
+                _context.Database.ExecuteSqlRaw("UPDATE Personas SET Categoria = 2 WHERE Categoria = 3 AND AceptoCristo = 0 AND EstaBautizado = 0 AND (CompromisoLunes=0 AND CompromisoMartes=0 AND CompromisoMiercoles=0 AND CompromisoJueves=0 AND CompromisoViernes=0 AND CompromisoSabado=0 AND CompromisoDomingo=0);"); // Adolescentes → Miembro
+                _context.Database.ExecuteSqlRaw("UPDATE Personas SET Categoria = 4 WHERE Categoria = 99;"); // temp → nuevo Seguimiento
+            });
+
+            // Recuperar Visitas que fueron incorrectamente movidas a Miembro por el bug de migraciones repetidas
+            // Heurística: Miembro sin bautismo, sin AceptoCristo, sin ningún compromiso = era Visita
+            Migrar("recovery_visitas_v1", () =>
+            {
+                _context.Database.ExecuteSqlRaw(@"
+                    UPDATE Personas SET Categoria = 3
+                    WHERE Categoria = 2
+                    AND AceptoCristo = 0
+                    AND EstaBautizado = 0
+                    AND CompromisoLunes = 0
+                    AND CompromisoMartes = 0
+                    AND CompromisoMiercoles = 0
+                    AND CompromisoJueves = 0
+                    AND CompromisoViernes = 0
+                    AND CompromisoSabado = 0
+                    AND CompromisoDomingo = 0;");
+            });
         }
 
         private void CargarConfiguracion()
@@ -101,9 +232,41 @@ namespace IglesiaAsistencia.ViewModels
             ? Personas 
             : Personas.Where(p => p.Nombre.Contains(SearchTextPersonas, StringComparison.OrdinalIgnoreCase));
 
-        public IEnumerable<Persona> AsistenciaFiltrada => string.IsNullOrWhiteSpace(SearchTextAsistencia) 
-            ? Personas 
-            : Personas.Where(p => p.Nombre.Contains(SearchTextAsistencia, StringComparison.OrdinalIgnoreCase));
+        public IEnumerable<Persona> AsistenciaFiltrada
+        {
+            get
+            {
+                var dia = FechaSeleccionada.DayOfWeek;
+                var list = Personas.AsEnumerable();
+                
+                // Filtrar por compromiso del día seleccionado
+                // Los Miembros/Líderes/Seguimiento se filtran por compromiso semanal.
+                // Las Visitas SOLO aparecen si asistieron ese día (ya marcado en el directorio).
+                list = list.Where(p => 
+                {
+                    if (p.Categoria == Categoria.Visita)
+                    {
+                        return p.IsPresente; // Ya cargado en ActualizarAsistentesHoy
+                    }
+
+                    return dia switch {
+                        DayOfWeek.Monday => p.CompromisoLunes,
+                        DayOfWeek.Tuesday => p.CompromisoMartes,
+                        DayOfWeek.Wednesday => p.CompromisoMiercoles,
+                        DayOfWeek.Thursday => p.CompromisoJueves,
+                        DayOfWeek.Friday => p.CompromisoViernes,
+                        DayOfWeek.Saturday => p.CompromisoSabado,
+                        DayOfWeek.Sunday => p.CompromisoDomingo,
+                        _ => false
+                    };
+                });
+
+                if (!string.IsNullOrWhiteSpace(SearchTextAsistencia))
+                    list = list.Where(p => p.Nombre.Contains(SearchTextAsistencia, StringComparison.OrdinalIgnoreCase));
+                    
+                return list.ToList();
+            }
+        }
 
         [RelayCommand]
         private void FiltrarListas()
@@ -115,17 +278,20 @@ namespace IglesiaAsistencia.ViewModels
         [RelayCommand]
         private void ActualizarAsistentesHoy()
         {
-            var ids = _context.Asistencias
-                .Where(a => a.Fecha.Date == FechaSeleccionada.Date && a.Asistio)
-                .Select(a => a.PersonaId)
+            var asistencias = _context.Asistencias
+                .Where(a => a.Fecha.Date == FechaSeleccionada.Date)
                 .ToList();
 
             foreach (var p in Personas)
             {
-                p.IsPresente = ids.Contains(p.Id);
+                var reg = asistencias.FirstOrDefault(a => a.PersonaId == p.Id);
+                p.IsPresente = reg?.Asistio ?? false;
+                p.IsExcusa = reg?.EsExcusa ?? false;
+                p.CurrentNotaExcusa = reg?.NotaExcusa;
             }
 
-            AsistentesHoy = new ObservableCollection<Persona>(Personas.Where(p => ids.Contains(p.Id)));
+            var idsAsistentes = asistencias.Where(a => a.Asistio).Select(a => a.PersonaId).ToList();
+            AsistentesHoy = new ObservableCollection<Persona>(Personas.Where(p => idsAsistentes.Contains(p.Id)));
             
             // Actualizar Cumpleañeros de la semana
             var hoy = DateTime.Today;
@@ -164,38 +330,129 @@ namespace IglesiaAsistencia.ViewModels
                 { 
                     PersonaId = persona.Id, 
                     Fecha = FechaSeleccionada.Date, 
-                    Asistio = true 
+                    Asistio = true,
+                    EsExcusa = false
                 };
                 _context.Asistencias.Add(asistencia);
             }
             else
             {
                 asistencia.Asistio = !asistencia.Asistio;
+                if (asistencia.Asistio) asistencia.EsExcusa = false; 
             }
 
+            // ACTUALIZACIÓN INMEDIATA (Antes del await para evitar lag en reportes)
+            persona.IsPresente = asistencia.Asistio;
+            persona.IsExcusa = asistencia.EsExcusa;
+
+            if (persona.IsPresente)
+            {
+                if (!AsistentesHoy.Any(a => a.Id == persona.Id))
+                    AsistentesHoy.Add(persona);
+            }
+            else
+            {
+                var existing = AsistentesHoy.FirstOrDefault(a => a.Id == persona.Id);
+                if (existing != null) AsistentesHoy.Remove(existing);
+            }
+
+            FiltrarListas();
+
             await _context.SaveChangesAsync();
-            ActualizarAsistentesHoy();
+        }
+
+        [RelayCommand]
+        private async Task ToggleExcusa(Persona persona)
+        {
+            var asistencia = await _context.Asistencias
+                .FirstOrDefaultAsync(a => a.PersonaId == persona.Id && a.Fecha.Date == FechaSeleccionada.Date);
+
+            if (asistencia == null)
+            {
+                asistencia = new Asistencia 
+                { 
+                    PersonaId = persona.Id, 
+                    Fecha = FechaSeleccionada.Date, 
+                    Asistio = false,
+                    EsExcusa = true 
+                };
+                _context.Asistencias.Add(asistencia);
+            }
+            else
+            {
+                asistencia.EsExcusa = !asistencia.EsExcusa;
+                if (asistencia.EsExcusa) asistencia.Asistio = false; 
+            }
+
+            // ACTUALIZACIÓN INMEDIATA
+            persona.IsPresente = asistencia.Asistio;
+            persona.IsExcusa = asistencia.EsExcusa;
+
+            var existingExcusa = AsistentesHoy.FirstOrDefault(a => a.Id == persona.Id);
+            if (existingExcusa != null) AsistentesHoy.Remove(existingExcusa);
+
+            FiltrarListas();
+
+            await _context.SaveChangesAsync();
+        }
+
+        [RelayCommand]
+        private async Task GuardarNotaExcusa(Persona persona)
+        {
+            var asistencia = await _context.Asistencias
+                .FirstOrDefaultAsync(a => a.PersonaId == persona.Id && a.Fecha.Date == FechaSeleccionada.Date);
+
+            if (asistencia != null)
+            {
+                asistencia.NotaExcusa = persona.CurrentNotaExcusa;
+                await _context.SaveChangesAsync();
+            }
         }
 
         [RelayCommand]
         private void EnviarReporte()
         {
             var asistentes = AsistentesHoy.ToList();
-            var sb = new System.Text.StringBuilder();
-            sb.AppendLine($"Reporte de Asistencia - {FechaSeleccionada:dd/MM/yyyy}");
-            sb.AppendLine();
-            sb.AppendLine($"Total: {asistentes.Count}");
-            sb.AppendLine($"Pastores: {asistentes.Count(a => a.Categoria == Categoria.Pastor)}");
-            sb.AppendLine($"Miembros: {asistentes.Count(a => a.Categoria == Categoria.Miembro)}");
-            sb.AppendLine($"Invitados: {asistentes.Count(a => a.Categoria == Categoria.Invitado)}");
-            sb.AppendLine();
+            var Visitas = asistentes.Where(a => a.Categoria == Categoria.Visita).ToList();
+            var excusas = Personas.Where(p => p.IsExcusa).ToList();
+            
+            // Ausentes con compromiso: Estaban en AsistenciaFiltrada pero no asistieron ni tienen excusa
+            var ausentes = AsistenciaFiltrada.Where(p => !p.IsPresente && !p.IsExcusa && p.Categoria != Categoria.Visita).ToList();
 
-            var invitados = asistentes.Where(a => a.Categoria == Categoria.Invitado).ToList();
-            if (invitados.Any())
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"*Reporte de Asistencia - {FechaSeleccionada:dd/MM/yyyy}*");
+            sb.AppendLine();
+            sb.AppendLine($"👥 *Total Presentes:* {asistentes.Count}");
+            sb.AppendLine();
+            
+            if (Visitas.Any())
             {
-                sb.AppendLine("Invitados:");
-                foreach (var i in invitados)
+                sb.AppendLine("*NUESTRAS VISITAS (VISITAS):*");
+                foreach (var i in Visitas)
+                {
                     sb.AppendLine($"- {i.Nombre}");
+                }
+                sb.AppendLine();
+            }
+
+            if (ausentes.Any())
+            {
+                sb.AppendLine("*HERMANOS AUSENTES (Con compromiso hoy):*");
+                foreach (var a in ausentes)
+                {
+                    sb.AppendLine($"- {a.Nombre}");
+                }
+                sb.AppendLine();
+            }
+
+            if (excusas.Any())
+            {
+                sb.AppendLine("*EXCUSAS PRESENTADAS:*");
+                foreach (var e in excusas)
+                {
+                    string nota = string.IsNullOrWhiteSpace(e.CurrentNotaExcusa) ? "Sin descripción" : e.CurrentNotaExcusa;
+                    sb.AppendLine($"- *{e.Nombre}*: {nota}");
+                }
             }
 
             string mensaje = System.Net.WebUtility.UrlEncode(sb.ToString());
@@ -207,6 +464,32 @@ namespace IglesiaAsistencia.ViewModels
         private void CambiarVista(string vista)
         {
             CurrentView = vista;
+            LimpiarFormulario();
+        }
+
+        private void LimpiarFormulario()
+        {
+            NuevoNombre = string.Empty;
+            NuevoTelefono = string.Empty;
+            NuevaFechaNacimiento = null;
+            NuevaCategoria = Categoria.Miembro;
+            NuevaQuienLoInvito = string.Empty;
+            VisitoHoy = false;
+            NuevaAceptoCristo = false;
+            NuevaFechaAceptoCristo = null;
+            NuevaEstaBautizado = false;
+            NuevaFechaBautismo = null;
+            
+            NuevaCompromisoLunes = false;
+            NuevaCompromisoMartes = false;
+            NuevaCompromisoMiercoles = false;
+            NuevaCompromisoJueves = false;
+            NuevaCompromisoViernes = false;
+            NuevaCompromisoSabado = false;
+            NuevaCompromisoDomingo = true;
+
+            EsModoEdicion = false;
+            PersonaSeleccionada = null;
         }
 
         [RelayCommand]
@@ -218,13 +501,50 @@ namespace IglesiaAsistencia.ViewModels
                 return;
             }
 
+            Persona pToRecord;
+
             if (EsModoEdicion && PersonaSeleccionada != null)
             {
                 PersonaSeleccionada.Nombre = NuevoNombre;
                 PersonaSeleccionada.Telefono = NuevoTelefono;
-                PersonaSeleccionada.FechaNacimiento = NuevaFechaNacimiento;
+                PersonaSeleccionada.FechaNacimiento = NuevaCategoria == Categoria.Visita ? null : NuevaFechaNacimiento;
+                
+                // Si acepta a cristo ahora y antes no, guardar fecha
+                if (NuevaAceptoCristo && !PersonaSeleccionada.AceptoCristo)
+                    PersonaSeleccionada.FechaAceptoCristo = DateTime.Today;
+                PersonaSeleccionada.AceptoCristo = NuevaAceptoCristo;
+
+                // Si se bautiza ahora y antes no, guardar fecha
+                if (NuevaEstaBautizado && !PersonaSeleccionada.EstaBautizado)
+                    PersonaSeleccionada.FechaBautismo = DateTime.Today;
+                PersonaSeleccionada.EstaBautizado = NuevaEstaBautizado;
+
                 PersonaSeleccionada.Categoria = NuevaCategoria;
+                PersonaSeleccionada.QuienLoInvito = NuevaCategoria == Categoria.Visita ? NuevaQuienLoInvito : null;
+                
+                if (NuevaCategoria == Categoria.Visita)
+                {
+                    PersonaSeleccionada.CompromisoLunes = false;
+                    PersonaSeleccionada.CompromisoMartes = false;
+                    PersonaSeleccionada.CompromisoMiercoles = false;
+                    PersonaSeleccionada.CompromisoJueves = false;
+                    PersonaSeleccionada.CompromisoViernes = false;
+                    PersonaSeleccionada.CompromisoSabado = false;
+                    PersonaSeleccionada.CompromisoDomingo = false;
+                }
+                else
+                {
+                    PersonaSeleccionada.CompromisoLunes = NuevaCompromisoLunes;
+                    PersonaSeleccionada.CompromisoMartes = NuevaCompromisoMartes;
+                    PersonaSeleccionada.CompromisoMiercoles = NuevaCompromisoMiercoles;
+                    PersonaSeleccionada.CompromisoJueves = NuevaCompromisoJueves;
+                    PersonaSeleccionada.CompromisoViernes = NuevaCompromisoViernes;
+                    PersonaSeleccionada.CompromisoSabado = NuevaCompromisoSabado;
+                    PersonaSeleccionada.CompromisoDomingo = NuevaCompromisoDomingo;
+                }
+
                 _context.Entry(PersonaSeleccionada).State = EntityState.Modified;
+                pToRecord = PersonaSeleccionada;
             }
             else
             {
@@ -232,19 +552,68 @@ namespace IglesiaAsistencia.ViewModels
                 {
                     Nombre = NuevoNombre,
                     Telefono = NuevoTelefono,
-                    FechaNacimiento = NuevaFechaNacimiento,
-                    Categoria = NuevaCategoria
+                    FechaNacimiento = NuevaCategoria == Categoria.Visita ? null : NuevaFechaNacimiento,
+                    Categoria = NuevaCategoria,
+                    AceptoCristo = NuevaAceptoCristo,
+                    FechaAceptoCristo = NuevaAceptoCristo ? DateTime.Today : null,
+                    EstaBautizado = NuevaEstaBautizado,
+                    FechaBautismo = NuevaEstaBautizado ? DateTime.Today : null,
+                    QuienLoInvito = NuevaCategoria == Categoria.Visita ? NuevaQuienLoInvito : null,
+                    CompromisoLunes = NuevaCategoria != Categoria.Visita && NuevaCompromisoLunes,
+                    CompromisoMartes = NuevaCategoria != Categoria.Visita && NuevaCompromisoMartes,
+                    CompromisoMiercoles = NuevaCategoria != Categoria.Visita && NuevaCompromisoMiercoles,
+                    CompromisoJueves = NuevaCategoria != Categoria.Visita && NuevaCompromisoJueves,
+                    CompromisoViernes = NuevaCategoria != Categoria.Visita && NuevaCompromisoViernes,
+                    CompromisoSabado = NuevaCategoria != Categoria.Visita && NuevaCompromisoSabado,
+                    CompromisoDomingo = NuevaCategoria != Categoria.Visita && NuevaCompromisoDomingo
                 };
                 _context.Personas.Add(nueva);
                 Personas.Add(nueva);
+                pToRecord = nueva;
             }
 
+            // Guardar persona primero para tener ID
             await _context.SaveChangesAsync();
+
+            // Si es Visita y se marcó "Visito Hoy", registrar asistencia
+            if (NuevaCategoria == Categoria.Visita && VisitoHoy)
+            {
+                var asistencia = await _context.Asistencias
+                    .FirstOrDefaultAsync(a => a.PersonaId == pToRecord.Id && a.Fecha.Date == DateTime.Today);
+                
+                if (asistencia == null)
+                {
+                    asistencia = new Asistencia { PersonaId = pToRecord.Id, Fecha = DateTime.Today, Asistio = true };
+                    _context.Asistencias.Add(asistencia);
+                }
+                else
+                {
+                    asistencia.Asistio = true;
+                    asistencia.EsExcusa = false;
+                }
+                await _context.SaveChangesAsync();
+            }
 
             // Limpiar campos
             NuevoNombre = string.Empty;
             NuevoTelefono = string.Empty;
             NuevaFechaNacimiento = null;
+            NuevaCategoria = Categoria.Miembro;
+            NuevaQuienLoInvito = string.Empty;
+            VisitoHoy = false;
+            NuevaAceptoCristo = false;
+            NuevaFechaAceptoCristo = null;
+            NuevaEstaBautizado = false;
+            NuevaFechaBautismo = null;
+            
+            NuevaCompromisoLunes = false;
+            NuevaCompromisoMartes = false;
+            NuevaCompromisoMiercoles = false;
+            NuevaCompromisoJueves = false;
+            NuevaCompromisoViernes = false;
+            NuevaCompromisoSabado = false;
+            NuevaCompromisoDomingo = true;
+
             EsModoEdicion = false;
             PersonaSeleccionada = null;
             
@@ -261,6 +630,21 @@ namespace IglesiaAsistencia.ViewModels
             NuevoTelefono = p.Telefono ?? "";
             NuevaFechaNacimiento = p.FechaNacimiento;
             NuevaCategoria = p.Categoria;
+            NuevaQuienLoInvito = p.QuienLoInvito ?? "";
+            VisitoHoy = p.IsPresente;
+            NuevaAceptoCristo = p.AceptoCristo;
+            NuevaFechaAceptoCristo = p.FechaAceptoCristo;
+            NuevaEstaBautizado = p.EstaBautizado;
+            NuevaFechaBautismo = p.FechaBautismo;
+            
+            NuevaCompromisoLunes = p.CompromisoLunes;
+            NuevaCompromisoMartes = p.CompromisoMartes;
+            NuevaCompromisoMiercoles = p.CompromisoMiercoles;
+            NuevaCompromisoJueves = p.CompromisoJueves;
+            NuevaCompromisoViernes = p.CompromisoViernes;
+            NuevaCompromisoSabado = p.CompromisoSabado;
+            NuevaCompromisoDomingo = p.CompromisoDomingo;
+
             EsModoEdicion = true;
         }
 
@@ -360,7 +744,11 @@ namespace IglesiaAsistencia.ViewModels
             {
                 try
                 {
-                    _pdfService.GenerarReporteAsistencia(sfd.FileName, FechaSeleccionada, AsistentesHoy.ToList());
+                    var asistentes = AsistentesHoy.ToList();
+                    var excusas = Personas.Where(p => p.IsExcusa).ToList();
+                    var ausentes = AsistenciaFiltrada.Where(p => !p.IsPresente && !p.IsExcusa && p.Categoria != Categoria.Visita).ToList();
+
+                    _pdfService.GenerarReporteDiarioDetallado(sfd.FileName, FechaSeleccionada, asistentes, excusas, ausentes);
                     MessageBox.Show("Reporte PDF generado con éxito.", "Éxito", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 catch (Exception ex)
@@ -410,42 +798,148 @@ namespace IglesiaAsistencia.ViewModels
             }
         }
         [RelayCommand]
-        private void ExportarReporteRango(string rango)
+        private async Task ExportarReporteRango(string rango)
         {
             DateTime inicio = FechaSeleccionada;
             DateTime fin = FechaSeleccionada;
 
             switch (rango)
             {
-                case "Semana": inicio = FechaSeleccionada.AddDays(-(int)FechaSeleccionada.DayOfWeek); fin = inicio.AddDays(6); break;
-                case "Mes": inicio = new DateTime(FechaSeleccionada.Year, FechaSeleccionada.Month, 1); fin = inicio.AddMonths(1).AddDays(-1); break;
-                case "Año": inicio = new DateTime(FechaSeleccionada.Year, 1, 1); fin = new DateTime(FechaSeleccionada.Year, 12, 31); break;
+                case "Semana": 
+                    inicio = FechaSeleccionada.AddDays(-(int)FechaSeleccionada.DayOfWeek); 
+                    fin = inicio.AddDays(6); 
+                    break;
+                case "Mes": 
+                    inicio = new DateTime(FechaSeleccionada.Year, FechaSeleccionada.Month, 1); 
+                    fin = inicio.AddMonths(1).AddDays(-1); 
+                    break;
+                case "Año": 
+                    inicio = new DateTime(FechaSeleccionada.Year, 1, 1); 
+                    fin = new DateTime(FechaSeleccionada.Year, 12, 31); 
+                    break;
             }
 
-            var sfd = new Microsoft.Win32.SaveFileDialog { Filter = "PDF|*.pdf", FileName = $"Reporte_{rango}_{inicio:yyyyMM}.pdf" };
+            var sfd = new Microsoft.Win32.SaveFileDialog 
+            { 
+                Filter = "PDF|*.pdf", 
+                FileName = $"Reporte_{rango}_{inicio:yyyyMMdd}.pdf" 
+            };
+
             if (sfd.ShowDialog() == true)
             {
-                // Aquí filtraríamos por rango en una app real, por ahora pasamos la lista actual
-                _pdfService.GenerarReporteAsistencia(sfd.FileName, inicio, AsistentesHoy.ToList());
-                MessageBox.Show($"Reporte {rango} generado.");
+                try
+                {
+                    // 1. Obtener todas las asistencias y excusas en el rango
+                    var registrosRango = await _context.Asistencias
+                        .Where(a => a.Fecha.Date >= inicio.Date && a.Fecha.Date <= fin.Date)
+                        .ToListAsync();
+
+                    // 2. Obtener las fechas únicas en las que hubo algún tipo de servicio (asistencia o excusa)
+                    var fechasServicio = registrosRango.Select(a => a.Fecha.Date).Distinct().ToList();
+
+                    if (!fechasServicio.Any())
+                    {
+                        MessageBox.Show("No hay registros en el rango seleccionado.", "Información");
+                        return;
+                    }
+
+                    // 3. Calcular datos por persona considerando sus días de compromiso y excusas
+                    var todasLasPersonas = await _context.Personas.ToListAsync();
+                    var datosReporte = todasLasPersonas.Select(p => {
+                        // Fechas de servicio que coinciden con el compromiso de esta persona
+                        var fechasCompromiso = fechasServicio.Where(f => f.DayOfWeek switch {
+                            DayOfWeek.Monday => p.CompromisoLunes,
+                            DayOfWeek.Tuesday => p.CompromisoMartes,
+                            DayOfWeek.Wednesday => p.CompromisoMiercoles,
+                            DayOfWeek.Thursday => p.CompromisoJueves,
+                            DayOfWeek.Friday => p.CompromisoViernes,
+                            DayOfWeek.Saturday => p.CompromisoSabado,
+                            DayOfWeek.Sunday => p.CompromisoDomingo,
+                            _ => false
+                        }).ToList();
+
+                        int totalPotencial = fechasCompromiso.Count;
+                        if (totalPotencial == 0) return null; // No tenía compromiso en los días que hubo servicio
+
+                        var misRegistros = registrosRango.Where(r => r.PersonaId == p.Id && fechasCompromiso.Contains(r.Fecha.Date)).ToList();
+                        int asistencias = misRegistros.Count(r => r.Asistio);
+                        int excusas = misRegistros.Count(r => r.EsExcusa);
+
+                        // El total efectivo excluye las excusas del denominador
+                        int totalEfectivo = totalPotencial - excusas;
+
+                        return new PersonaReporteDto
+                        {
+                            Nombre = p.Nombre,
+                            Categoria = p.Categoria,
+                            AsistenciasRealizadas = asistencias,
+                            TotalServicios = totalEfectivo > 0 ? totalEfectivo : asistencias // Evitar división por cero si todas fueron excusas
+                        };
+                    })
+                    .Where(d => d != null)
+                    .Cast<PersonaReporteDto>()
+                    .Where(d => d.AsistenciasRealizadas > 0 || d.Categoria != Categoria.Visita)
+                    .ToList();
+
+                    _pdfService.GenerarReporteDetallado(sfd.FileName, $"Reporte de Asistencia ({rango})", inicio, fin, datosReporte);
+                    MessageBox.Show($"Reporte {rango} generado con éxito.");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error al generar el reporte: {ex.Message}");
+                }
             }
         }
 
         [RelayCommand]
-        private void ExportarReporteDomingos()
+        private async Task ExportarReporteDomingos()
         {
-            var sfd = new Microsoft.Win32.SaveFileDialog { Filter = "PDF|*.pdf", FileName = $"Reporte_Domingos_{DateTime.Now:yyyyMM}.pdf" };
+            var sfd = new Microsoft.Win32.SaveFileDialog 
+            { 
+                Filter = "PDF|*.pdf", 
+                FileName = $"Reporte_Domingos_{DateTime.Now:yyyyMM}.pdf" 
+            };
+
             if (sfd.ShowDialog() == true)
             {
-                // Filtramos solo asistencias de domingos
-                var asistenciasDomingo = _context.Asistencias
-                    .Where(a => a.Fecha.DayOfWeek == DayOfWeek.Sunday)
-                    .Select(a => a.Persona)
-                    .Distinct()
+                try
+                {
+                    // 1. Obtener todas las asistencias de domingos
+                    var asistenciasDomingo = await _context.Asistencias
+                        .Where(a => a.Fecha.DayOfWeek == DayOfWeek.Sunday && a.Asistio)
+                        .ToListAsync();
+
+                    // 2. Obtener el total de domingos con asistencia
+                    int totalDomingos = asistenciasDomingo.Select(a => a.Fecha.Date).Distinct().Count();
+
+                    if (totalDomingos == 0)
+                    {
+                        MessageBox.Show("No hay registros de asistencia en domingos.", "Información");
+                        return;
+                    }
+
+                    // 3. Calcular datos por persona
+                    var todasLasPersonas = await _context.Personas.ToListAsync();
+                    var datosReporte = todasLasPersonas.Select(p => new PersonaReporteDto
+                    {
+                        Nombre = p.Nombre,
+                        Categoria = p.Categoria,
+                        AsistenciasRealizadas = asistenciasDomingo.Count(a => a.PersonaId == p.Id),
+                        TotalServicios = totalDomingos
+                    })
+                    .Where(d => d.AsistenciasRealizadas > 0 || d.Categoria != Categoria.Visita)
                     .ToList();
 
-                _pdfService.GenerarReporteAsistencia(sfd.FileName, DateTime.Now, asistenciasDomingo);
-                MessageBox.Show("Reporte de Domingos generado con éxito.");
+                    var primerDomingo = asistenciasDomingo.Min(a => a.Fecha);
+                    var ultimoDomingo = asistenciasDomingo.Max(a => a.Fecha);
+
+                    _pdfService.GenerarReporteDetallado(sfd.FileName, "Reporte Histórico de Domingos", primerDomingo, ultimoDomingo, datosReporte);
+                    MessageBox.Show("Reporte de Domingos generado con éxito.");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error al generar el reporte: {ex.Message}");
+                }
             }
         }
     }

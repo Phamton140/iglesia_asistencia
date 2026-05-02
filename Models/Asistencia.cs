@@ -19,5 +19,9 @@ namespace IglesiaAsistencia.Models
         public DateTime Fecha { get; set; }
         
         public bool Asistio { get; set; } = true;
+        
+        public bool EsExcusa { get; set; }
+        
+        public string? NotaExcusa { get; set; }
     }
 }

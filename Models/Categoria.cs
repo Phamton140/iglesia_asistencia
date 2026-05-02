@@ -5,7 +5,7 @@ namespace IglesiaAsistencia.Models
         Pastor,
         Diacono,
         Miembro,
-        Adolescente,
-        Invitado
+        Visita,
+        Seguimiento
     }
 }

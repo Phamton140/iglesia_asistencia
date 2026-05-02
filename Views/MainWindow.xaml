@@ -4,6 +4,7 @@
         xmlns:vm="clr-namespace:IglesiaAsistencia.ViewModels"
         xmlns:models="clr-namespace:IglesiaAsistencia.Models"
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
+        xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
         Title="Asistencia Pro - Comunidad del Reino" Height="850" Width="1200"
         WindowState="Maximized"
         WindowStartupLocation="CenterScreen"
@@ -66,7 +67,8 @@
                 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <DatePicker SelectedDate="{Binding FechaSeleccionada}" Width="140" Margin="0,0,10,0"/>
-                    <Button Style="{StaticResource PrimaryButton}" Command="{Binding EnviarReporteCommand}" Content="ENVIAR REPORTE WA"/>
+                    <Button Style="{StaticResource PrimaryButton}" Command="{Binding ExportarPdfCommand}" Content="📥 DESCARGAR PDF" Background="Indigo" Margin="0,0,10,0"/>
+                    <Button Style="{StaticResource PrimaryButton}" Command="{Binding EnviarReporteCommand}" Content="📲 REPORTE WA"/>
                 </StackPanel>
             </Grid>
 
@@ -184,7 +186,9 @@
                             <TextBox Grid.Row="1" Text="{Binding SearchTextPersonas, UpdateSourceTrigger=PropertyChanged}" 
                                      Margin="0,0,0,15" Padding="10" BorderBrush="#DDD" FontSize="14"/>
 
-                            <DataGrid Grid.Row="2" ItemsSource="{Binding PersonasFiltradas}" AutoGenerateColumns="False" IsReadOnly="True" Background="Transparent" BorderThickness="0" SelectionMode="Single">
+                            <DataGrid Grid.Row="2" ItemsSource="{Binding PersonasFiltradas}" AutoGenerateColumns="False" 
+                                      IsReadOnly="True" Background="Transparent" BorderThickness="0" 
+                                      SelectionMode="Single" AlternatingRowBackground="#F5F5F5">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Nombre" Binding="{Binding Nombre}" Width="*"/>
                                     <DataGridTextColumn Header="Categoría" Binding="{Binding Categoria}" Width="100"/>
@@ -213,20 +217,133 @@
                             <TextBlock Text="Teléfono" FontSize="12" Foreground="Indigo"/>
                             <TextBox Text="{Binding NuevoTelefono}" Margin="0,5,0,15" Padding="8"/>
                             
-                            <TextBlock Text="Fecha Nacimiento" FontSize="12" Foreground="Indigo"/>
-                            <DatePicker SelectedDate="{Binding NuevaFechaNacimiento}" Margin="0,5,0,15" Padding="5"/>
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding NuevaCategoria}" Value="{x:Static models:Categoria.Visita}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Fecha Nacimiento" FontSize="12" Foreground="Indigo"/>
+                                <DatePicker SelectedDate="{Binding NuevaFechaNacimiento}" Margin="0,5,0,15" Padding="5"/>
+                            </StackPanel>
                             
+                            <!-- Fecha Aceptó a Cristo (Seguimiento, Miembros, etc) -->
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding NuevaCategoria}" Value="{x:Static models:Categoria.Seguimiento}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding NuevaCategoria}" Value="{x:Static models:Categoria.Miembro}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding NuevaCategoria}" Value="{x:Static models:Categoria.Pastor}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding NuevaCategoria}" Value="{x:Static models:Categoria.Diacono}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Fecha Aceptó a Cristo" FontSize="12" Foreground="Indigo"/>
+                                <DatePicker SelectedDate="{Binding NuevaFechaAceptoCristo}" Margin="0,5,0,15" Padding="5"/>
+                            </StackPanel>
+
+                            <!-- Fecha Bautismo (Solo Miembros, Pastores, Diáconos) -->
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding NuevaCategoria}" Value="{x:Static models:Categoria.Miembro}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding NuevaCategoria}" Value="{x:Static models:Categoria.Pastor}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding NuevaCategoria}" Value="{x:Static models:Categoria.Diacono}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Fecha Bautismo" FontSize="12" Foreground="Indigo"/>
+                                <DatePicker SelectedDate="{Binding NuevaFechaBautismo}" Margin="0,5,0,15" Padding="5"/>
+                            </StackPanel>
+                            
+
                             <TextBlock Text="Categoría" FontSize="12" Foreground="Indigo"/>
-                            <ComboBox SelectedValue="{Binding NuevaCategoria}" Margin="0,5,0,25" Padding="8">
+                            <ComboBox SelectedValue="{Binding NuevaCategoria}" Margin="0,5,0,15" Padding="8">
                                 <models:Categoria>Pastor</models:Categoria>
                                 <models:Categoria>Diacono</models:Categoria>
                                 <models:Categoria>Miembro</models:Categoria>
-                                <models:Categoria>Adolescente</models:Categoria>
-                                <models:Categoria>Invitado</models:Categoria>
+                                <models:Categoria>Visita</models:Categoria>
+                                <models:Categoria>Seguimiento</models:Categoria>
                             </ComboBox>
+
+                            <!-- Campos especiales para Visitas -->
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding NuevaCategoria}" Value="{x:Static models:Categoria.Visita}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Quien lo invitó (Opcional)" FontSize="12" Foreground="Indigo"/>
+                                <TextBox Text="{Binding NuevaQuienLoInvito}" Margin="0,5,0,15" Padding="8"/>
+                                
+                                <CheckBox Content="Registrar visita para HOY" IsChecked="{Binding VisitoHoy}" FontWeight="Bold" Margin="0,0,0,10"/>
+                                <CheckBox Content="¿Aceptó a Cristo?" IsChecked="{Binding NuevaAceptoCristo}" Foreground="DarkGreen" FontWeight="Bold" Margin="0,0,0,10"/>
+                            </StackPanel>
+
+                            <!-- Campos especiales para Seguimiento -->
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding NuevaCategoria}" Value="{x:Static models:Categoria.Seguimiento}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <CheckBox Content="¿Está Bautizado?" IsChecked="{Binding NuevaEstaBautizado}" Foreground="DarkBlue" FontWeight="Bold" Margin="0,0,0,20"/>
+                            </StackPanel>
+
+                            <TextBlock Text="Compromiso de Asistencia" FontSize="12" Foreground="Indigo" Margin="0,0,0,5"/>
+                            <WrapPanel Margin="0,0,0,20">
+                                <WrapPanel.Style>
+                                    <Style TargetType="WrapPanel">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding NuevaCategoria}" Value="{x:Static models:Categoria.Visita}">
+                                                <Setter Property="IsEnabled" Value="False"/>
+                                                <Setter Property="Opacity" Value="0.5"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </WrapPanel.Style>
+                                <CheckBox Content="Dom" IsChecked="{Binding NuevaCompromisoDomingo}" Margin="0,0,10,5"/>
+                                <CheckBox Content="Lun" IsChecked="{Binding NuevaCompromisoLunes}" Margin="0,0,10,5"/>
+                                <CheckBox Content="Mar" IsChecked="{Binding NuevaCompromisoMartes}" Margin="0,0,10,5"/>
+                                <CheckBox Content="Mie" IsChecked="{Binding NuevaCompromisoMiercoles}" Margin="0,0,10,5"/>
+                                <CheckBox Content="Jue" IsChecked="{Binding NuevaCompromisoJueves}" Margin="0,0,10,5"/>
+                                <CheckBox Content="Vie" IsChecked="{Binding NuevaCompromisoViernes}" Margin="0,0,10,5"/>
+                                <CheckBox Content="Sab" IsChecked="{Binding NuevaCompromisoSabado}" Margin="0,0,10,5"/>
+                            </WrapPanel>
                             
                             <Button Style="{StaticResource PrimaryButton}" Content="GUARDAR INFORMACIÓN" Command="{Binding RegistrarNuevaPersonaCommand}"/>
-                            <Button Content="Cancelar Edición" Visibility="{Binding EsModoEdicion, Converter={StaticResource BooleanToVisibilityConverter}}" Command="{Binding CambiarVistaCommand}" CommandParameter="Personas" Margin="0,10,0,0" Background="Transparent" BorderThickness="0"/>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -244,19 +361,112 @@
                                  Margin="0,0,0,15" Padding="10" BorderBrush="#DDD" FontSize="14"/>
 
                         <ScrollViewer Grid.Row="2">
-                            <ItemsControl ItemsSource="{Binding AsistenciaFiltrada}">
+                            <ItemsControl ItemsSource="{Binding AsistenciaFiltrada}" AlternationCount="2">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border BorderBrush="#EEE" BorderThickness="0,0,0,1" Padding="12">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource AncestorType=ContentPresenter}}" Value="1">
+                                                            <Setter Property="Background" Value="#F5F5F5"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
                                             <Grid>
-                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
                                                 <StackPanel>
                                                     <TextBlock Text="{Binding Nombre}" FontSize="18" FontWeight="SemiBold"/>
-                                                    <TextBlock Text="{Binding Categoria}" Foreground="Indigo" FontSize="13"/>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding Categoria}" Foreground="Indigo" FontSize="13" Margin="0,0,10,0"/>
+                                                        <TextBlock Text="⚠️ Excusa marcada" Foreground="#E65100" FontSize="13" FontWeight="SemiBold" Visibility="{Binding IsExcusa, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                    </StackPanel>
+                                                    
+                                                    <!-- Nota de Excusa -->
+                                                    <StackPanel Margin="0,5,0,0">
+                                                        <StackPanel.Style>
+                                                            <Style TargetType="StackPanel">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <MultiDataTrigger>
+                                                                        <MultiDataTrigger.Conditions>
+                                                                            <Condition Binding="{Binding IsExcusa}" Value="True"/>
+                                                                            <Condition Binding="{Binding EsVisita}" Value="False"/>
+                                                                        </MultiDataTrigger.Conditions>
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </MultiDataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </StackPanel.Style>
+                                                        <TextBlock Text="Razón de la excusa (Se guarda automáticamente):" FontSize="11" Foreground="Gray"/>
+                                                        <TextBox Text="{Binding CurrentNotaExcusa}" 
+                                                                 Padding="5" Margin="0,2,0,0">
+                                                            <i:Interaction.Triggers>
+                                                                <i:EventTrigger EventName="LostFocus">
+                                                                    <i:InvokeCommandAction Command="{Binding DataContext.GuardarNotaExcusaCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                                                                </i:EventTrigger>
+                                                            </i:Interaction.Triggers>
+                                                        </TextBox>
+                                                    </StackPanel>
                                                 </StackPanel>
-                                                <CheckBox Grid.Column="1" IsChecked="{Binding IsPresente}" Command="{Binding DataContext.ToggleAsistenciaCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" VerticalAlignment="Center">
-                                                    <CheckBox.LayoutTransform><ScaleTransform ScaleX="1.6" ScaleY="1.6"/></CheckBox.LayoutTransform>
-                                                </CheckBox>
+                                                
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <!-- Control para Miembros/Líderes: Checkbox -->
+                                                    <StackPanel Margin="0,0,20,0">
+                                                        <StackPanel.Style>
+                                                            <Style TargetType="StackPanel">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Categoria}" Value="{x:Static models:Categoria.Visita}">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </StackPanel.Style>
+                                                        <TextBlock Text="Asistió" FontSize="10" HorizontalAlignment="Center" Margin="0,0,0,2"/>
+                                                        <CheckBox IsChecked="{Binding IsPresente}" Command="{Binding DataContext.ToggleAsistenciaCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" HorizontalAlignment="Center">
+                                                            <CheckBox.LayoutTransform><ScaleTransform ScaleX="1.5" ScaleY="1.5"/></CheckBox.LayoutTransform>
+                                                        </CheckBox>
+                                                    </StackPanel>
+
+                                                    <!-- Control para Visitas: Solo lectura -->
+                                                    <StackPanel Margin="0,0,10,0" VerticalAlignment="Center">
+                                                        <StackPanel.Style>
+                                                            <Style TargetType="StackPanel">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Categoria}" Value="{x:Static models:Categoria.Visita}">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </StackPanel.Style>
+                                                        <Border Background="Indigo" CornerRadius="4" Padding="10,5">
+                                                            <TextBlock Text="✅ PRESENTE" Foreground="White" FontWeight="Bold" FontSize="11"/>
+                                                        </Border>
+                                                    </StackPanel>
+
+                                                    <!-- Control de Excusa (Solo Miembros) -->
+                                                    <StackPanel>
+                                                        <StackPanel.Style>
+                                                            <Style TargetType="StackPanel">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Categoria}" Value="{x:Static models:Categoria.Visita}">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </StackPanel.Style>
+                                                        <TextBlock Text="Excusa" FontSize="10" HorizontalAlignment="Center" Margin="0,0,0,2"/>
+                                                        <CheckBox IsChecked="{Binding IsExcusa}" Command="{Binding DataContext.ToggleExcusaCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" HorizontalAlignment="Center">
+                                                            <CheckBox.LayoutTransform><ScaleTransform ScaleX="1.5" ScaleY="1.5"/></CheckBox.LayoutTransform>
+                                                        </CheckBox>
+                                                    </StackPanel>
+                                                </StackPanel>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
