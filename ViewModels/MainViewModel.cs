@@ -125,9 +125,6 @@ namespace IglesiaAsistencia.ViewModels
         private bool _visitoHoy = false;
 
         [ObservableProperty]
-        private DateTime? _nuevaFechaAceptoCristo;
-
-        [ObservableProperty]
         private bool _nuevaAceptoCristo;
         partial void OnNuevaAceptoCristoChanged(bool value)
         {
@@ -142,8 +139,6 @@ namespace IglesiaAsistencia.ViewModels
                 {
                     PersonaSeleccionada.Categoria = Categoria.Seguimiento;
                     PersonaSeleccionada.AceptoCristo = true;
-                    if (!PersonaSeleccionada.FechaAceptoCristo.HasValue)
-                        PersonaSeleccionada.FechaAceptoCristo = DateTime.Today;
                     PersonaSeleccionada.FechaNacimiento = null;
 
                     _context.Entry(PersonaSeleccionada).State = EntityState.Modified;
@@ -154,18 +149,6 @@ namespace IglesiaAsistencia.ViewModels
             }
         }
 
-        [ObservableProperty]
-        private DateTime? _nuevaFechaBautismo;
-
-        partial void OnNuevaFechaAceptoCristoChanged(DateTime? value)
-        {
-            if (value.HasValue) NuevaAceptoCristo = true;
-        }
-
-        partial void OnNuevaFechaBautismoChanged(DateTime? value)
-        {
-            if (value.HasValue) NuevaEstaBautizado = true;
-        }
 
         [ObservableProperty]
         private bool _nuevaEstaBautizado;
@@ -592,9 +575,7 @@ namespace IglesiaAsistencia.ViewModels
             NuevaQuienLoInvito = string.Empty;
             VisitoHoy = false;
             NuevaAceptoCristo = false;
-            NuevaFechaAceptoCristo = null;
             NuevaEstaBautizado = false;
-            NuevaFechaBautismo = null;
             
             NuevaCompromisoLunes = false;
             NuevaCompromisoMartes = false;
@@ -625,13 +606,11 @@ namespace IglesiaAsistencia.ViewModels
                 PersonaSeleccionada.Telefono = NuevoTelefono;
                 PersonaSeleccionada.FechaNacimiento = NuevaCategoria == Categoria.Visita ? null : NuevaFechaNacimiento;
                 
-                // Actualizar Aceptó a Cristo: Priorizar fecha del DatePicker
-                PersonaSeleccionada.AceptoCristo = NuevaAceptoCristo || NuevaFechaAceptoCristo.HasValue;
-                PersonaSeleccionada.FechaAceptoCristo = NuevaFechaAceptoCristo ?? (PersonaSeleccionada.AceptoCristo ? (PersonaSeleccionada.FechaAceptoCristo ?? DateTime.Today) : null);
+                // Actualizar Aceptó a Cristo
+                PersonaSeleccionada.AceptoCristo = NuevaAceptoCristo;
 
-                // Actualizar Bautismo: Priorizar fecha del DatePicker
-                PersonaSeleccionada.EstaBautizado = NuevaEstaBautizado || NuevaFechaBautismo.HasValue;
-                PersonaSeleccionada.FechaBautismo = NuevaFechaBautismo ?? (PersonaSeleccionada.EstaBautizado ? (PersonaSeleccionada.FechaBautismo ?? DateTime.Today) : null);
+                // Actualizar Bautismo
+                PersonaSeleccionada.EstaBautizado = NuevaEstaBautizado;
 
                 PersonaSeleccionada.Categoria = NuevaCategoria;
                 PersonaSeleccionada.QuienLoInvito = NuevaCategoria == Categoria.Visita ? NuevaQuienLoInvito : null;
@@ -668,10 +647,8 @@ namespace IglesiaAsistencia.ViewModels
                     Telefono = NuevoTelefono,
                     FechaNacimiento = NuevaCategoria == Categoria.Visita ? null : NuevaFechaNacimiento,
                     Categoria = NuevaCategoria,
-                    AceptoCristo = NuevaAceptoCristo || NuevaFechaAceptoCristo.HasValue,
-                    FechaAceptoCristo = NuevaFechaAceptoCristo ?? (NuevaAceptoCristo ? DateTime.Today : null),
-                    EstaBautizado = NuevaEstaBautizado || NuevaFechaBautismo.HasValue,
-                    FechaBautismo = NuevaFechaBautismo ?? (NuevaEstaBautizado ? DateTime.Today : null),
+                    AceptoCristo = NuevaAceptoCristo,
+                    EstaBautizado = NuevaEstaBautizado,
                     QuienLoInvito = NuevaCategoria == Categoria.Visita ? NuevaQuienLoInvito : null,
                     CompromisoLunes = NuevaCategoria != Categoria.Visita && NuevaCompromisoLunes,
                     CompromisoMartes = NuevaCategoria != Categoria.Visita && NuevaCompromisoMartes,
@@ -716,9 +693,7 @@ namespace IglesiaAsistencia.ViewModels
             NuevaQuienLoInvito = string.Empty;
             VisitoHoy = false;
             NuevaAceptoCristo = false;
-            NuevaFechaAceptoCristo = null;
             NuevaEstaBautizado = false;
-            NuevaFechaBautismo = null;
             
             NuevaCompromisoLunes = false;
             NuevaCompromisoMartes = false;
@@ -747,9 +722,7 @@ namespace IglesiaAsistencia.ViewModels
             NuevaQuienLoInvito = p.QuienLoInvito ?? "";
             VisitoHoy = p.IsPresente;
             NuevaAceptoCristo = p.AceptoCristo;
-            NuevaFechaAceptoCristo = p.FechaAceptoCristo;
             NuevaEstaBautizado = p.EstaBautizado;
-            NuevaFechaBautismo = p.FechaBautismo;
             
             NuevaCompromisoLunes = p.CompromisoLunes;
             NuevaCompromisoMartes = p.CompromisoMartes;

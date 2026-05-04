@@ -1,73 +1,60 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace IglesiaAsistencia.Models
 {
-    public partial class Persona : CommunityToolkit.Mvvm.ComponentModel.ObservableObject
+    public partial class Persona : ObservableObject
     {
         [Key]
         public int Id { get; set; }
         
+        [ObservableProperty]
         [Required]
-        public string Nombre { get; set; } = string.Empty;
+        private string _nombre = string.Empty;
         
-        public string? Telefono { get; set; }
+        [ObservableProperty]
+        private string? _telefono;
         
-        public DateTime? FechaNacimiento { get; set; }
+        [ObservableProperty]
+        private DateTime? _fechaNacimiento;
         
+        [ObservableProperty]
         private Categoria _categoria;
-        public Categoria Categoria
-        {
-            get => _categoria;
-            set => SetProperty(ref _categoria, value);
-        }
         
-        public DateTime FechaRegistro { get; set; } = DateTime.Now;
+        [ObservableProperty]
+        private DateTime _fechaRegistro = DateTime.Now;
         
         // Días de compromiso
-        public bool CompromisoLunes { get; set; }
-        public bool CompromisoMartes { get; set; }
-        public bool CompromisoMiercoles { get; set; }
-        public bool CompromisoJueves { get; set; }
-        public bool CompromisoViernes { get; set; }
-        public bool CompromisoSabado { get; set; }
-        public bool CompromisoDomingo { get; set; } = true;
+        [ObservableProperty] private bool _compromisoLunes;
+        [ObservableProperty] private bool _compromisoMartes;
+        [ObservableProperty] private bool _compromisoMiercoles;
+        [ObservableProperty] private bool _compromisoJueves;
+        [ObservableProperty] private bool _compromisoViernes;
+        [ObservableProperty] private bool _compromisoSabado;
+        [ObservableProperty] private bool _compromisoDomingo = true;
 
         [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+        [ObservableProperty]
         private bool _isPresente;
-        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
-        public bool IsPresente 
-        { 
-            get => _isPresente; 
-            set => SetProperty(ref _isPresente, value); 
-        }
 
         [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+        [ObservableProperty]
         private bool _isExcusa;
-        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
-        public bool IsExcusa 
-        { 
-            get => _isExcusa; 
-            set => SetProperty(ref _isExcusa, value); 
-        }
 
         [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+        [ObservableProperty]
         private string? _currentNotaExcusa;
-        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
-        public string? CurrentNotaExcusa 
-        { 
-            get => _currentNotaExcusa; 
-            set => SetProperty(ref _currentNotaExcusa, value); 
-        }
 
-        public string? QuienLoInvito { get; set; }
+        [ObservableProperty]
+        private string? _quienLoInvito;
         
-        public bool AceptoCristo { get; set; }
-        public DateTime? FechaAceptoCristo { get; set; }
+        [ObservableProperty]
+        private bool _aceptoCristo;
         
-        public bool EstaBautizado { get; set; }
-        public DateTime? FechaBautismo { get; set; }
+        [ObservableProperty]
+        private bool _estaBautizado;
 
         public int Edad
         {
@@ -92,8 +79,8 @@ namespace IglesiaAsistencia.Models
         public string TipoVisita => ContadorVisitas <= 1 ? "Primera vez" : "Recurrente";
         
         public bool EsCumpleañosHoy => FechaNacimiento.HasValue && 
-                                      FechaNacimiento.Value.Month == DateTime.Today.Month && 
-                                      FechaNacimiento.Value.Day == DateTime.Today.Day;
+                                       FechaNacimiento.Value.Month == DateTime.Today.Month && 
+                                       FechaNacimiento.Value.Day == DateTime.Today.Day;
 
         public bool CumplioEstaSemana => FechaNacimiento.HasValue && 
                                         EstaEnLosUltimos7Dias(FechaNacimiento.Value);
