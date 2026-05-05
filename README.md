@@ -1,55 +1,43 @@
-# Iglesia Asistencia - Sistema de Gestión Congregacional ⛪
+# Iglesia Asistencia - Sistema de GestiÃ³n Congregacional â›ª
 
-Sistema profesional de escritorio desarrollado en **C# con WPF (.NET 8)** bajo el patrón **MVVM**, diseñado para la administración eficiente de miembros, visitas y control de asistencia en iglesias cristianas.
+Sistema profesional de escritorio desarrollado en **C# con WPF (.NET 8)** bajo el patrÃ³n **MVVM**, diseÃ±ado para la administraciÃ³n eficiente de miembros, visitas y control de asistencia en iglesias cristianas.
 
-## 🌟 Características Principales
+## ðŸŒŸ CaracterÃ­sticas Principales
 
-### 📋 Gestión de Directorio
-- **Registro Inteligente:** Formulario dinámico que adapta sus campos según la categoría (Pastor, Diácono, Miembro, Visita, Seguimiento).
-- **Hitos Espirituales:** Seguimiento detallado de fechas de nacimiento, aceptación a Cristo y bautismos.
-- **Búsqueda Avanzada:** Filtrado en tiempo real por nombre en el directorio de miembros.
+### ðŸ“‹ GestiÃ³n de Directorio
+- **Registro Inteligente:** Formulario dinÃ¡mico que adapta sus campos segÃºn la categorÃ­a (Pastor, DiÃ¡cono, Miembro, Visita, Seguimiento).
+- **Hitos Espirituales:** Seguimiento de fecha de nacimiento, aceptaciÃ³n a Cristo y bautismos.
+- **SimplificaciÃ³n de Interfaz:** Vista de directorio optimizada que muestra solo la informaciÃ³n esencial (Nombre, CategorÃ­a).
 
-### ✅ Control de Asistencia y Seguimiento
-- **Pase de Lista Rápido:** Interfaz optimizada para el marcado de asistencia diaria.
-- **Gestión de Excusas:** Permite registrar motivos de inasistencia para un seguimiento pastoral más humano.
-- **Alertas de Cumpleaños:** Visualización automática de miembros que cumplen años hoy o en la próxima semana.
+### âœ… Control de Asistencia y Seguimiento
+- **Pase de Lista RÃ¡pido:** Interfaz optimizada para el marcado de asistencia diaria con soporte para fechas pasadas.
+- **GestiÃ³n de Excusas:** Permite registrar motivos de inasistencia para un seguimiento pastoral mÃ¡s humano.
+- **Alertas de CumpleaÃ±os:** VisualizaciÃ³n automÃ¡tica de miembros que cumplen aÃ±os en la semana actual.
 
-### 📄 Reportes y Comunicación
-- **Reportes PDF Profesionales:** Generación de documentos detallados utilizando **QuestPDF**, incluyendo logotipos institucionales y estadísticas por rango de fecha.
-- **Rutas Personalizables:** Permite configurar carpetas independientes para guardar reportes y copias de seguridad.
-- **Integración con WhatsApp:** Envío de resúmenes de asistencia automáticos con un solo clic.
+### ðŸ“„ Reportes y EstadÃ­sticas
+- **Reportes PDF Detallados:** GeneraciÃ³n de documentos profesionales con **QuestPDF**, incluyendo logotipos y firmas.
+- **DistribuciÃ³n por Edades:** EstadÃ­sticas automÃ¡ticas en los reportes que desglosan la asistencia por rangos (NiÃ±os, Adolescentes, JÃ³venes, Adultos, Adultos Mayores).
+- **IntegraciÃ³n con WhatsApp:** EnvÃ­o de resÃºmenes de asistencia automÃ¡ticos para grupos de liderazgo.
 
-### 🛠️ Herramientas de Mantenimiento
-- **Backups Automáticos:** El sistema realiza copias de seguridad de la base de datos local cada vez que se cierra la aplicación.
-- **Reinicio de Sistema:** Opción para vaciar la base de datos y comenzar de cero (ideal para despliegue inicial).
+### ðŸ› ï¸  Herramientas de Mantenimiento
+- **Backups AutomÃ¡ticos:** El sistema realiza copias de seguridad de la base de datos local (.db) automÃ¡ticamente al cerrar el programa.
+- **Migraciones AutomÃ¡ticas:** GestiÃ³n transparente de actualizaciones de la base de datos para asegurar la integridad de la informaciÃ³n.
 
-## 🏗️ Arquitectura Técnica
-- **Framework:** .NET 8.0 (Windows)
-- **UI:** WPF con **Material Design** y diseño Premium personalizado.
-- **Patrón:** MVVM con **CommunityToolkit.Mvvm**.
-- **Base de Datos:** SQLite local gestionado con **Entity Framework Core**.
-- **Reportes:** QuestPDF (Motor de diseño de documentos).
-- **Gráficos:** LiveCharts2 para visualización estadística.
+## ðŸ —ï¸  Arquitectura TÃ©cnica
+- **Framework:** .NET 8.0 Windows.
+- **UI:** WPF con diseÃ±o Premium personalizado (Estilo Dark/Modern).
+- **PatrÃ³n:** MVVM con **CommunityToolkit.Mvvm**.
+- **Base de Datos:** SQLite gestionado con **Entity Framework Core**.
+- **Reportes:** QuestPDF.
 
-## 📦 Instalación y Configuración
-1. Clonar el repositorio.
-2. Asegurarse de tener instalado el **SDK de .NET 8.0**.
-3. Restaurar dependencias:
+## ðŸ“📦 PublicaciÃ³n e InstalaciÃ³n
+Para generar una versiÃ³n ejecutable portable:
+1. Abrir una terminal en la carpeta del proyecto.
+2. Ejecutar el comando de publicaciÃ³n:
    ```bash
-   dotnet restore
+   dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true
    ```
-4. Ejecutar la aplicación:
-   ```bash
-   dotnet run
-   ```
-   *La base de datos SQLite se creará automáticamente en la carpeta local del usuario.*
-
-## 📂 Estructura del Proyecto
-- **/Models**: Definición de entidades (Persona, Asistencia, Categoría).
-- **/ViewModels**: Lógica de negocio y enlace de datos (Patrón MVVM).
-- **/Views**: Definición de interfaces de usuario en XAML.
-- **/Services**: Servicios especializados (Generación de PDF, WhatsApp, Acceso a Datos).
-- **/Data**: Contexto de base de datos y configuraciones globales.
+3. El ejecutable se encontrarÃ¡ en `bin\Release\net8.0-windows\win-x64\publish\IglesiaAsistencia.exe`.
 
 ---
-*Desarrollado para la gloria de Dios y el servicio de su iglesia.*
+*Desarrollado para el servicio de la obra de Dios.*

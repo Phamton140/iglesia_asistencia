@@ -5,7 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace IglesiaAsistencia.Models
 {
-    public partial class Persona : ObservableObject
+    public partial class Persona : ObservableValidator
     {
         [Key]
         public int Id { get; set; }
@@ -35,15 +35,15 @@ namespace IglesiaAsistencia.Models
         [ObservableProperty] private bool _compromisoSabado;
         [ObservableProperty] private bool _compromisoDomingo = true;
 
-        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+        [property: System.ComponentModel.DataAnnotations.Schema.NotMapped]
         [ObservableProperty]
         private bool _isPresente;
 
-        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+        [property: System.ComponentModel.DataAnnotations.Schema.NotMapped]
         [ObservableProperty]
         private bool _isExcusa;
 
-        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+        [property: System.ComponentModel.DataAnnotations.Schema.NotMapped]
         [ObservableProperty]
         private string? _currentNotaExcusa;
 
@@ -60,7 +60,16 @@ namespace IglesiaAsistencia.Models
         {
             get
             {
-                if (!FechaNacimiento.HasValue) return 30; // Valor por defecto si no hay fecha
+                if (!FechaNacimiento.HasValue) return 30; // Valor por defecto para compatibilidad UI
+                return EdadReal;
+            }
+        }
+
+        public int EdadReal
+        {
+            get
+            {
+                if (!FechaNacimiento.HasValue) return 0;
                 var hoy = DateTime.Today;
                 var edad = hoy.Year - FechaNacimiento.Value.Year;
                 if (FechaNacimiento.Value.Date > hoy.AddYears(-edad)) edad--;

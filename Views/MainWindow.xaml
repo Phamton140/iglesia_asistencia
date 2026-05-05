@@ -183,10 +183,10 @@
                                 <StackPanel>
                                     <TextBlock Text="Seleccionar categoría para definir días de asistencia obligatorios:" Margin="0,0,0,10" FontSize="12" Foreground="#555"/>
                                     <ComboBox SelectedItem="{Binding CategoriaConfig}" Margin="0,0,0,15" Padding="10">
-                                        <models:Categoria>Pastor</models:Categoria>
-                                        <models:Categoria>Diacono</models:Categoria>
-                                        <models:Categoria>Miembro</models:Categoria>
-                                        <models:Categoria>Seguimiento</models:Categoria>
+                                        <x:Static Member="models:Categoria.Pastor"/>
+                                        <x:Static Member="models:Categoria.Diacono"/>
+                                        <x:Static Member="models:Categoria.Miembro"/>
+                                        <x:Static Member="models:Categoria.Seguimiento"/>
                                     </ComboBox>
                                     
                                     <TextBlock Text="Días marcados automáticamente al registrar:" Margin="0,0,0,10" FontSize="12" FontWeight="SemiBold"/>
@@ -272,8 +272,6 @@
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Nombre" Binding="{Binding Nombre}" Width="*"/>
                                     <DataGridTextColumn Header="Categoría" Binding="{Binding Categoria}" Width="100"/>
-                                    <DataGridCheckBoxColumn Header="Aceptó" Binding="{Binding AceptoCristo}" Width="60"/>
-                                    <DataGridCheckBoxColumn Header="Baut." Binding="{Binding EstaBautizado}" Width="60"/>
                                     <DataGridTemplateColumn Header="Acciones" Width="100">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
@@ -295,11 +293,11 @@
                                 
                                 <TextBlock Text="Categoría" FontSize="12" Foreground="Indigo"/>
                                 <ComboBox SelectedValue="{Binding NuevaCategoria}" Margin="0,2,0,10" Padding="8">
-                                    <models:Categoria>Pastor</models:Categoria>
-                                    <models:Categoria>Diacono</models:Categoria>
-                                    <models:Categoria>Miembro</models:Categoria>
-                                    <models:Categoria>Visita</models:Categoria>
-                                    <models:Categoria>Seguimiento</models:Categoria>
+                                    <x:Static Member="models:Categoria.Pastor"/>
+                                    <x:Static Member="models:Categoria.Diacono"/>
+                                    <x:Static Member="models:Categoria.Miembro"/>
+                                    <x:Static Member="models:Categoria.Visita"/>
+                                    <x:Static Member="models:Categoria.Seguimiento"/>
                                 </ComboBox>
 
                                 <TextBlock Text="Nombre Completo *" FontSize="12" Foreground="Indigo"/>

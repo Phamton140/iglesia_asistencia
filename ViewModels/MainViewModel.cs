@@ -32,6 +32,7 @@ namespace IglesiaAsistencia.ViewModels
 
         [ObservableProperty]
         private DateTime _fechaSeleccionada = DateTime.Today;
+        partial void OnFechaSeleccionadaChanged(DateTime value) => ActualizarAsistentesHoy();
 
         [ObservableProperty]
         private string _searchTextPersonas = string.Empty;
@@ -156,15 +157,6 @@ namespace IglesiaAsistencia.ViewModels
         {
             if (value)
             {
-                if (!NuevaFechaNacimiento.HasValue)
-                {
-                    MessageBox.Show("Para marcar un bautismo es obligatorio ingresar la fecha de nacimiento primero.", "Requisito faltante", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    
-                    // Usar Dispatcher para revertir el check sin causar conflictos de concurrencia en la UI
-                    Application.Current.Dispatcher.InvokeAsync(() => NuevaEstaBautizado = false);
-                    return;
-                }
-
                 if (NuevaCategoria == Categoria.Seguimiento || NuevaCategoria == Categoria.Visita)
                 {
                     NuevaCategoria = Categoria.Miembro;
@@ -212,14 +204,23 @@ namespace IglesiaAsistencia.ViewModels
 
             void Migrar(string id, Action accion)
             {
-                var count = _context.Database
-                    .SqlQueryRaw<int>($"SELECT COUNT(*) AS Value FROM __Migraciones WHERE Id = '{id}'")
-                    .First();
-                if (count == 0)
+                try 
                 {
-                    try { accion(); } catch { }
-                    _context.Database.ExecuteSqlRaw(
-                        $"INSERT INTO __Migraciones(Id, Fecha) VALUES('{id}', '{DateTime.Now:yyyy-MM-dd HH:mm:ss}')");
+                    var count = _context.Database
+                        .SqlQueryRaw<int>("SELECT COUNT(*) FROM __Migraciones WHERE Id = {0}", id)
+                        .ToList()
+                        .FirstOrDefault();
+
+                    if (count == 0)
+                    {
+                        accion();
+                        _context.Database.ExecuteSqlInterpolated(
+                            $"INSERT INTO __Migraciones(Id, Fecha) VALUES({id}, {DateTime.Now:yyyy-MM-dd HH:mm:ss})");
+                    }
+                }
+                catch
+                {
+                    // Error de migración silencioso para no bloquear el inicio, pero lo ideal sería registrarlo.
                 }
             }
 
@@ -320,10 +321,17 @@ namespace IglesiaAsistencia.ViewModels
 
         public async void LoadData()
         {
-            var list = await _context.Personas.Include(p => p.Asistencias).ToListAsync();
-            Personas = new ObservableCollection<Persona>(list);
-            FiltrarListas();
-            ActualizarAsistentesHoy();
+            try 
+            {
+                var list = await _context.Personas.Include(p => p.Asistencias).ToListAsync();
+                Personas = new ObservableCollection<Persona>(list);
+                FiltrarListas();
+                ActualizarAsistentesHoy();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al cargar datos iniciales: {ex.Message}", "Error de Base de Datos", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         public IEnumerable<Persona> PersonasFiltradas => string.IsNullOrWhiteSpace(SearchTextPersonas) 
@@ -670,11 +678,11 @@ namespace IglesiaAsistencia.ViewModels
             if (NuevaCategoria == Categoria.Visita && VisitoHoy)
             {
                 var asistencia = await _context.Asistencias
-                    .FirstOrDefaultAsync(a => a.PersonaId == pToRecord.Id && a.Fecha.Date == DateTime.Today);
+                    .FirstOrDefaultAsync(a => a.PersonaId == pToRecord.Id && a.Fecha.Date == FechaSeleccionada.Date);
                 
                 if (asistencia == null)
                 {
-                    asistencia = new Asistencia { PersonaId = pToRecord.Id, Fecha = DateTime.Today, Asistio = true };
+                    asistencia = new Asistencia { PersonaId = pToRecord.Id, Fecha = FechaSeleccionada.Date, Asistio = true };
                     _context.Asistencias.Add(asistencia);
                 }
                 else

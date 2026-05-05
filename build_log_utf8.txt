@@ -1,0 +1,12 @@
+﻿Versión de MSBuild 17.9.8+b34f75857 para .NET
+  Determinando los proyectos que se van a restaurar...
+  Todos los proyectos están actualizados para la restauración.
+C:\proyectos\iglesia_asistencia\Program.cs(14,21): error CS1061: "App" no contiene una definición para "InitializeComponent" ni un método de extensión accesible "InitializeComponent" que acepte un primer argumento del tipo "App" (¿falta alguna directiva using o una referencia de ensamblado?) [C:\proyectos\iglesia_asistencia\IglesiaAsistencia_qnrycsk3_wpftmp.csproj]
+
+ERROR al compilar.
+
+C:\proyectos\iglesia_asistencia\Program.cs(14,21): error CS1061: "App" no contiene una definición para "InitializeComponent" ni un método de extensión accesible "InitializeComponent" que acepte un primer argumento del tipo "App" (¿falta alguna directiva using o una referencia de ensamblado?) [C:\proyectos\iglesia_asistencia\IglesiaAsistencia_qnrycsk3_wpftmp.csproj]
+    0 Advertencia(s)
+    1 Errores
+
+Tiempo transcurrido 00:06:01.38

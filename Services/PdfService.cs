@@ -57,6 +57,35 @@ namespace IglesiaAsistencia.Services
                             row.RelativeItem().Component(new StatCard("AUSENCIAS", ausentes.Count.ToString(), Colors.Red.Medium));
                         });
 
+                        // Estadísticas de Edad
+                        x.Item().Border(1).BorderColor(Colors.Grey.Lighten3).Padding(10).Column(col =>
+                        {
+                            col.Spacing(5);
+                            col.Item().Text("DISTRIBUCIÓN POR EDADES").FontSize(10).Bold().FontColor(Colors.Indigo.Medium);
+                            
+                            var porEdad = asistentes.GroupBy(p => {
+                                if (!p.FechaNacimiento.HasValue) return (6, "Edad Desconocida");
+                                var edad = p.EdadReal;
+                                if (edad <= 12) return (1, "Niños (0-12)");
+                                if (edad <= 17) return (2, "Adolescentes (13-17)");
+                                if (edad <= 30) return (3, "Jóvenes (18-30)");
+                                if (edad <= 60) return (4, "Adultos (31-60)");
+                                return (5, "Adultos Mayores (61+)");
+                            }).OrderBy(g => g.Key.Item1);
+
+                            col.Item().Row(row =>
+                            {
+                                foreach (var grupo in porEdad)
+                                {
+                                    row.RelativeItem().Column(c => {
+                                        c.Item().Text(grupo.Key.Item2).FontSize(7).SemiBold();
+                                        c.Item().Text(grupo.Count().ToString()).FontSize(12).Bold();
+                                    });
+                                    row.Spacing(5);
+                                }
+                            });
+                        });
+
                         // 1. NUESTRAS VISITAS
                         var visitas = asistentes.Where(a => a.Categoria == Categoria.Visita).ToList();
                         if (visitas.Any())
@@ -136,7 +165,7 @@ namespace IglesiaAsistencia.Services
                                     table.ColumnsDefinition(c => { c.ConstantColumn(30); c.RelativeColumn(); c.RelativeColumn(); });
                                     foreach (var asis in hermanosAsistentes.OrderBy(a => a.Categoria))
                                     {
-                                        table.Cell().Text("v");
+                                        table.Cell().Text("•");
                                         table.Cell().Text(asis.Nombre);
                                         table.Cell().Text(asis.Categoria.ToString()).FontSize(9);
                                     }
